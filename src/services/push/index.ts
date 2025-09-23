@@ -1,6 +1,6 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PushServiceHelper, wxwMessageBuilder } from './helper';
-import WxwMessage, { WxwErrorCode, WxwMentionUser, WxwMessageType, WxwNewsArticle, WxwWebhookResponse } from 'src/types/push/wxw-webhook';
+import WxwMessage, { WxwErrorCode, WxwMentionUser, WxwMessageType, WxwNewsArticle, WxwWebhookResponse } from '@app/types/push/wxw-webhook';
 
 // 推送服务配置接口
 export interface PushServiceConfig {

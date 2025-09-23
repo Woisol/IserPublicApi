@@ -1,9 +1,10 @@
+// 使用相对路径导入，global.d.ts 提供了类型声明的全局支持
 import {
   WxwMarkdownMessage,
   WxwMessageBuilder,
   WxwMessageType,
   WxwNewsArticle,
-} from 'src/types/push/wxw-webhook';
+} from '@app/types/push/wxw-webhook';
 
 export function wxwMessageBuilder(): WxwMessageBuilder {
   return {
