@@ -10,13 +10,7 @@ import {
   WxwErrorCode,
   WxwMessageType,
 } from '@app/apps/push/types/wxw-webhook.runtime';
-import * as fs from 'fs';
-import * as path from 'path';
-
-// Bot Key 配置接口
-export interface BotKeyConfig {
-  [channel: string]: string;
-}
+import { BotKeyLoader } from './botkey-loader';
 
 // 推送服务配置接口
 export interface PushServiceConfig {
@@ -31,75 +25,16 @@ export class PushService {
   private readonly builder = wxwMessageBuilder();
   private readonly helper = WXWMessageHelper;
   private readonly config: PushServiceConfig;
-  private botKeys: BotKeyConfig = {};
+  private readonly botKeyLoader: BotKeyLoader;
 
-  constructor() {
+  constructor(botKeyLoader: BotKeyLoader) {
     this.config = {
       webhookUrl: process.env.WXWORK_WEBHOOK_URL || '',
       timeout: 10000, // 默认10秒超时
       retryCount: 3, // 默认重试3次
       enableLogging: true, // 默认启用日志
     };
-    this.loadBotKeys();
-  }
-
-  /**
-   * 加载 bot-key.json 配置文件
-   */
-  private loadBotKeys(): void {
-    const configPath = path.join(process.cwd(), 'bot-key.json');
-    try {
-      const configData = fs.readFileSync(configPath, 'utf-8');
-      this.botKeys = JSON.parse(configData);
-      // this.logger.log('Bot keys loaded successfully');
-    } catch (error) {
-      const nodeError = error as NodeJS.ErrnoException;
-
-      if (nodeError.code === 'ENOENT') {
-        // 文件不存在，创建默认配置
-        this.logger.warn('bot-key.json not found, creating default config');
-
-        const defaultConfig: BotKeyConfig = {
-          general: 'key=your-webhook-key-here',
-        };
-
-        try {
-          fs.writeFileSync(
-            configPath,
-            JSON.stringify(defaultConfig, null, 2),
-            'utf-8',
-          );
-          this.botKeys = defaultConfig;
-          this.logger.log('Default bot-key.json created successfully');
-        } catch (writeError) {
-          this.logger.error(
-            'Failed to create default config file:',
-            writeError,
-          );
-          this.botKeys = {};
-        }
-      } else {
-        // 其他错误（权限问题、JSON解析错误等）
-        this.logger.error('Failed to load bot keys:', error);
-        this.botKeys = {};
-      }
-    }
-  }
-
-  /**
-   * 获取指定渠道的 webhook URL
-   * @param channel 渠道名称
-   * @returns 对应的 webhook URL 或 null
-   */
-  private getWebhookUrl(channel: string): string | null {
-    const key = this.botKeys[channel];
-    if (!key) {
-      this.logger.warn(`No key found for channel: ${channel}`);
-      return null;
-    }
-
-    // 构建企微机器人 webhook URL
-    return `${process.env.WXWORK_WEBHOOK_URL}?key=${key}`;
+    this.botKeyLoader = botKeyLoader;
   }
 
   /**
@@ -107,8 +42,7 @@ export class PushService {
    * @returns 渠道名称数组
    */
   getAvailableChannels(): string[] {
-    // this.loadBotKeys();
-    return Object.keys(this.botKeys);
+    return this.botKeyLoader.getAvailableChannels();
   }
 
   // /**
@@ -223,7 +157,7 @@ export class PushService {
       throw new Error('Invalid message format');
     }
 
-    const webhookUrl = this.getWebhookUrl(channel);
+    const webhookUrl = this.botKeyLoader.getWebhookUrl(channel);
     if (!webhookUrl) {
       throw new Error(
         `Channel '${channel}' not found or has no key configured`,
