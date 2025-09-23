@@ -1,0 +1,34 @@
+name: deploy on self-hosted runner
+# run-name: ${{ github.workflow }} - ${{ github.ref }} - ${{ github.sha }}
+on:
+  push:
+    branches:
+      - main
+jobs:
+  deploy:
+    name: deploy
+    runs-on: self-hosted
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      # - name: Use Node.js 18
+      #   uses: actions/setup-node@v3
+      #   with:
+      #     node-version: '18'
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Build project
+        run: pnpm run build
+
+      - name: Deploy project
+        run: |
+          pm2 startOrRestart dist/main.js --name IserPublicApi
+        env:
+          SERVER_PORT: 6990
+          AUTHORITY_API_KEY: ${{ secrets.AUTHORITY_API_KEY }}
+          WXWORK_WEBHOOK_URL: https://qyapi.weixin.qq.com/cgi-bin/webhook/send
+      - name: remove node_modules
+        run: rm -rf node_modules
