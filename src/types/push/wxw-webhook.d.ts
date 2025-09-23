@@ -3,15 +3,7 @@
  * 基于企业微信官方文档: https://developer.work.weixin.qq.com/document/path/99110
  */
 
-// 基础消息类型枚举
-export enum WxwMessageType {
-  TEXT = 'text',
-  MARKDOWN = 'markdown',
-  IMAGE = 'image',
-  NEWS = 'news',
-  FILE = 'file',
-  TEMPLATE_CARD = 'template_card',
-}
+import { WxwMessageType } from "./wxw-webhook.runtime";
 
 // 基础消息结构
 export interface WxwBaseMessage {
@@ -67,15 +59,6 @@ export interface WxwFileMessage extends WxwBaseMessage {
   file: {
     media_id: string; // 文件media_id
   };
-}
-
-// 模板卡片消息类型枚举
-export enum WxwTemplateCardType {
-  TEXT_NOTICE = 'text_notice',
-  NEWS_NOTICE = 'news_notice',
-  BUTTON_INTERACTION = 'button_interaction',
-  VOTE_INTERACTION = 'vote_interaction',
-  MULTIPLE_INTERACTION = 'multiple_interaction',
 }
 
 // 卡片按钮
@@ -305,7 +288,7 @@ export type WxwMessage =
 // Webhook 请求体
 export interface WxwWebhookRequest {
   key?: string; // webhook机器人的key（可选，用于身份验证）
-  [(K in WxwMessage) as WxwMessage['msgtype']]: WxwMessage extends {
+  [(K in WxwMessageType) as WxwMessage['msgtype']]: WxwMessage extends {
     msgtype: K;
   }
     ? WxwMessage
@@ -316,21 +299,6 @@ export interface WxwWebhookRequest {
 export interface WxwWebhookResponse {
   errcode: number;
   errmsg: string;
-}
-
-// 错误码枚举
-export enum WxwErrorCode {
-  SUCCESS = 0,
-  INVALID_WEBHOOK = 93000,
-  INVALID_MSGTYPE = 93001,
-  INVALID_TEXT = 93002,
-  INVALID_MARKDOWN = 93003,
-  INVALID_IMAGE = 93004,
-  INVALID_NEWS = 93005,
-  INVALID_FILE = 93006,
-  UPLOAD_MEDIA_FAILED = 93007,
-  INVALID_TEMPLATE_CARD = 93008,
-  TOO_FREQUENT = 45009,
 }
 
 // 常用工具类型

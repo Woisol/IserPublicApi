@@ -1,6 +1,15 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { PushServiceHelper, wxwMessageBuilder } from './helper';
-import WxwMessage, { WxwErrorCode, WxwMentionUser, WxwMessageType, WxwNewsArticle, WxwWebhookResponse } from '@app/types/push/wxw-webhook';
+import type {
+  WxwMessage,
+  WxwMentionUser,
+  WxwNewsArticle,
+  WxwWebhookResponse,
+} from '@app/types/push/wxw-webhook';
+import {
+  WxwErrorCode,
+  WxwMessageType,
+} from '@app/types/push/wxw-webhook.runtime';
 
 // 推送服务配置接口
 export interface PushServiceConfig {
@@ -16,13 +25,12 @@ export class PushService {
   private readonly helper = PushServiceHelper;
   private readonly config: PushServiceConfig;
 
-  constructor(config: PushServiceConfig = {}) {
+  constructor() {
     this.config = {
       webhookUrl: process.env.WXWORK_WEBHOOK_URL || '',
       timeout: 10000, // 默认10秒超时
       retryCount: 3, // 默认重试3次
       enableLogging: true, // 默认启用日志
-      ...config,
     };
   }
 

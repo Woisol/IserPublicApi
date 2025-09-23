@@ -1,10 +1,14 @@
-// 使用相对路径导入，global.d.ts 提供了类型声明的全局支持
-import {
+// 类型从 .d.ts 引入；值从 runtime 模块引入，避免运行时加载 .d.ts
+import type {
   WxwMarkdownMessage,
   WxwMessageBuilder,
-  WxwMessageType,
   WxwNewsArticle,
 } from '@app/types/push/wxw-webhook';
+import { WxwMessageType } from '@app/types/push/wxw-webhook.runtime';
+
+// import {
+//   WxwMessageBuilder
+// } from '@type/push';
 
 export function wxwMessageBuilder(): WxwMessageBuilder {
   return {
