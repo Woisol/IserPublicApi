@@ -1,5 +1,5 @@
 import { Injectable, Logger } from '@nestjs/common';
-import { PushServiceHelper, wxwMessageBuilder } from './helper';
+import { WXWMessageHelper, wxwMessageBuilder } from './wxw-message-helper';
 import type {
   WxwMessage,
   WxwMentionUser,
@@ -10,6 +10,13 @@ import {
   WxwErrorCode,
   WxwMessageType,
 } from '@app/types/push/wxw-webhook.runtime';
+import * as fs from 'fs';
+import * as path from 'path';
+
+// Bot Key 配置接口
+export interface BotKeyConfig {
+  [channel: string]: string;
+}
 
 // 推送服务配置接口
 export interface PushServiceConfig {
@@ -22,8 +29,9 @@ export interface PushServiceConfig {
 export class PushService {
   private readonly logger = new Logger(PushService.name);
   private readonly builder = wxwMessageBuilder();
-  private readonly helper = PushServiceHelper;
+  private readonly helper = WXWMessageHelper;
   private readonly config: PushServiceConfig;
+  private botKeys: BotKeyConfig = {};
 
   constructor() {
     this.config = {
@@ -32,104 +40,228 @@ export class PushService {
       retryCount: 3, // 默认重试3次
       enableLogging: true, // 默认启用日志
     };
+    this.loadBotKeys();
   }
 
   /**
-   * 发送消息到企微群
+   * 加载 bot-key.json 配置文件
+   */
+  private loadBotKeys(): void {
+    const configPath = path.join(process.cwd(), 'bot-key.json');
+    try {
+      const configData = fs.readFileSync(configPath, 'utf-8');
+      this.botKeys = JSON.parse(configData);
+      // this.logger.log('Bot keys loaded successfully');
+    } catch (error) {
+      const nodeError = error as NodeJS.ErrnoException;
+
+      if (nodeError.code === 'ENOENT') {
+        // 文件不存在，创建默认配置
+        this.logger.warn('bot-key.json not found, creating default config');
+
+        const defaultConfig: BotKeyConfig = {
+          general: 'key=your-webhook-key-here',
+        };
+
+        try {
+          fs.writeFileSync(
+            configPath,
+            JSON.stringify(defaultConfig, null, 2),
+            'utf-8',
+          );
+          this.botKeys = defaultConfig;
+          this.logger.log('Default bot-key.json created successfully');
+        } catch (writeError) {
+          this.logger.error(
+            'Failed to create default config file:',
+            writeError,
+          );
+          this.botKeys = {};
+        }
+      } else {
+        // 其他错误（权限问题、JSON解析错误等）
+        this.logger.error('Failed to load bot keys:', error);
+        this.botKeys = {};
+      }
+    }
+  }
+
+  /**
+   * 获取指定渠道的 webhook URL
+   * @param channel 渠道名称
+   * @returns 对应的 webhook URL 或 null
+   */
+  private getWebhookUrl(channel: string): string | null {
+    const key = this.botKeys[channel];
+    if (!key) {
+      this.logger.warn(`No key found for channel: ${channel}`);
+      return null;
+    }
+
+    // 构建企微机器人 webhook URL
+    return `${process.env.WXWORK_WEBHOOK_URL}?key=${key}`;
+  }
+
+  /**
+   * 获取所有可用的渠道
+   * @returns 渠道名称数组
+   */
+  getAvailableChannels(): string[] {
+    // this.loadBotKeys();
+    return Object.keys(this.botKeys);
+  }
+
+  // /**
+  //  * 发送消息到企微群
+  //  * @param message 要发送的消息
+  //  */
+  // async _sendMessage(message: WxwMessage): Promise<WxwWebhookResponse> {
+  //   // 验证消息格式
+  //   if (!this.validateMessage(message)) {
+  //     throw new Error('Invalid message format');
+  //   }
+
+  //   const url = this.config.webhookUrl;
+  //   if (!url) {
+  //     throw new Error('Webhook URL is required');
+  //   }
+
+  //   let lastError: Error;
+
+  //   // 怎么请求重试都给我写好了😂 @todo 使用库并迁移到 common
+  //   for (let attempt = 1; attempt <= this.config.retryCount; attempt++) {
+  //     try {
+  //       if (this.config.enableLogging) {
+  //         this.logger.debug(
+  //           `Sending message to webhook (attempt ${attempt}): ${url}`,
+  //           message,
+  //         );
+  //       }
+
+  //       const controller = new AbortController();
+  //       const timeoutId = setTimeout(
+  //         () => controller.abort(),
+  //         this.config.timeout,
+  //       );
+
+  //       const response = await fetch(url, {
+  //         method: 'POST',
+  //         headers: {
+  //           'Content-Type': 'application/json',
+  //         },
+  //         body: JSON.stringify(message),
+  //         signal: controller.signal,
+  //       });
+
+  //       clearTimeout(timeoutId);
+
+  //       if (!response.ok) {
+  //         throw new Error(`HTTP error! status: ${response.status}`);
+  //       }
+
+  //       const result: WxwWebhookResponse = await response.json();
+
+  //       if (result.errcode !== WxwErrorCode.SUCCESS) {
+  //         // 某些错误不需要重试
+  //         if (
+  //           result.errcode === WxwErrorCode.INVALID_WEBHOOK ||
+  //           result.errcode === WxwErrorCode.INVALID_MSGTYPE ||
+  //           result.errcode === WxwErrorCode.INVALID_TEXT ||
+  //           result.errcode === WxwErrorCode.INVALID_MARKDOWN ||
+  //           result.errcode === WxwErrorCode.INVALID_IMAGE ||
+  //           result.errcode === WxwErrorCode.INVALID_NEWS ||
+  //           result.errcode === WxwErrorCode.INVALID_FILE ||
+  //           result.errcode === WxwErrorCode.INVALID_TEMPLATE_CARD
+  //         ) {
+  //           throw new Error(
+  //             `WeChat Work API error: ${result.errmsg} (${result.errcode})`,
+  //           );
+  //         }
+
+  //         throw new Error(
+  //           `WeChat Work API error: ${result.errmsg} (${result.errcode})`,
+  //         );
+  //       }
+
+  //       if (this.config.enableLogging) {
+  //         this.logger.debug('Message sent successfully', result);
+  //       }
+  //       return result;
+  //     } catch (error) {
+  //       lastError = error as Error;
+
+  //       if (attempt < this.config.retryCount) {
+  //         const delay = Math.pow(2, attempt - 1) * 1000; // 指数退避
+  //         if (this.config.enableLogging) {
+  //           this.logger.warn(
+  //             `Attempt ${attempt} failed, retrying in ${delay}ms...`,
+  //             error,
+  //           );
+  //         }
+  //         await new Promise((resolve) => setTimeout(resolve, delay));
+  //       }
+  //     }
+  //   }
+
+  //   if (this.config.enableLogging) {
+  //     this.logger.error('All retry attempts failed', lastError);
+  //   }
+  //   throw lastError;
+  // }
+
+  /**
+   * 根据渠道发送消息
+   * @param channel 渠道名称
    * @param message 要发送的消息
    */
-  async _sendMessage(message: WxwMessage): Promise<WxwWebhookResponse> {
+  async _sendMessage(
+    message: WxwMessage,
+    channel: string,
+  ): Promise<WxwWebhookResponse> {
     // 验证消息格式
     if (!this.validateMessage(message)) {
       throw new Error('Invalid message format');
     }
 
-    const url = this.config.webhookUrl;
-    if (!url) {
-      throw new Error('Webhook URL is required');
+    const webhookUrl = this.getWebhookUrl(channel);
+    if (!webhookUrl) {
+      throw new Error(
+        `Channel '${channel}' not found or has no key configured`,
+      );
     }
 
-    let lastError: Error;
+    // 发送请求
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.config.timeout);
 
-    // 怎么请求重试都给我写好了😂 @todo 使用库并迁移到 common
-    for (let attempt = 1; attempt <= this.config.retryCount; attempt++) {
-      try {
-        if (this.config.enableLogging) {
-          this.logger.debug(
-            `Sending message to webhook (attempt ${attempt}): ${url}`,
-            message,
-          );
-        }
+    try {
+      const response = await fetch(webhookUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(message),
+        signal: controller.signal,
+      });
 
-        const controller = new AbortController();
-        const timeoutId = setTimeout(
-          () => controller.abort(),
-          this.config.timeout,
-        );
+      clearTimeout(timeoutId);
 
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-          },
-          body: JSON.stringify(message),
-          signal: controller.signal,
-        });
-
-        clearTimeout(timeoutId);
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const result: WxwWebhookResponse = await response.json();
-
-        if (result.errcode !== WxwErrorCode.SUCCESS) {
-          // 某些错误不需要重试
-          if (
-            result.errcode === WxwErrorCode.INVALID_WEBHOOK ||
-            result.errcode === WxwErrorCode.INVALID_MSGTYPE ||
-            result.errcode === WxwErrorCode.INVALID_TEXT ||
-            result.errcode === WxwErrorCode.INVALID_MARKDOWN ||
-            result.errcode === WxwErrorCode.INVALID_IMAGE ||
-            result.errcode === WxwErrorCode.INVALID_NEWS ||
-            result.errcode === WxwErrorCode.INVALID_FILE ||
-            result.errcode === WxwErrorCode.INVALID_TEMPLATE_CARD
-          ) {
-            throw new Error(
-              `WeChat Work API error: ${result.errmsg} (${result.errcode})`,
-            );
-          }
-
-          throw new Error(
-            `WeChat Work API error: ${result.errmsg} (${result.errcode})`,
-          );
-        }
-
-        if (this.config.enableLogging) {
-          this.logger.debug('Message sent successfully', result);
-        }
-        return result;
-      } catch (error) {
-        lastError = error as Error;
-
-        if (attempt < this.config.retryCount) {
-          const delay = Math.pow(2, attempt - 1) * 1000; // 指数退避
-          if (this.config.enableLogging) {
-            this.logger.warn(
-              `Attempt ${attempt} failed, retrying in ${delay}ms...`,
-              error,
-            );
-          }
-          await new Promise((resolve) => setTimeout(resolve, delay));
-        }
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
       }
-    }
 
-    if (this.config.enableLogging) {
-      this.logger.error('All retry attempts failed', lastError);
+      const result: WxwWebhookResponse = await response.json();
+
+      if (this.config.enableLogging) {
+        this.logger.log(`Message sent to channel ${channel}:`, result);
+      }
+
+      return result;
+    } catch (error) {
+      clearTimeout(timeoutId);
+      this.logger.error(`Failed to send message to channel ${channel}:`, error);
+      throw error;
     }
-    throw lastError;
   }
 
   // /**
@@ -150,7 +282,7 @@ export class PushService {
    */
   async sendTestMessage(): Promise<WxwWebhookResponse> {
     const message = this.helper._createTestMessage();
-    return this._sendMessage(message);
+    return this._sendMessage(message, 'general');
   }
 
   /**
@@ -160,19 +292,23 @@ export class PushService {
    */
   async sendTextMessage(
     content: string,
+    channel = 'general',
     mentions?: WxwMentionUser[],
   ): Promise<WxwWebhookResponse> {
     const message = this.builder.text(content, mentions);
-    return this._sendMessage(message);
+    return this._sendMessage(message, channel);
   }
 
   /**
    * 发送Markdown消息的便捷方法
    * @param content Markdown格式的消息内容
    */
-  async sendMarkdownMessage(content: string): Promise<WxwWebhookResponse> {
+  async sendMarkdownMessage(
+    content: string,
+    channel = 'general',
+  ): Promise<WxwWebhookResponse> {
     const message = this.builder.markdown(content);
-    return this._sendMessage(message);
+    return this._sendMessage(message, channel);
   }
 
   /**
@@ -181,9 +317,10 @@ export class PushService {
    */
   async sendNewsMessage(
     articles: WxwNewsArticle[],
+    channel = 'general',
   ): Promise<WxwWebhookResponse> {
     const message = this.builder.news(articles);
-    return this._sendMessage(message);
+    return this._sendMessage(message, channel);
   }
 
   /**

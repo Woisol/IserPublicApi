@@ -31,4 +31,3 @@ export enum WxwErrorCode {
   INVALID_TEMPLATE_CARD = 93008,
   TOO_FREQUENT = 45009,
 }
-

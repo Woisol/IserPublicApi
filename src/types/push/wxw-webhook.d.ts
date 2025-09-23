@@ -3,7 +3,7 @@
  * 基于企业微信官方文档: https://developer.work.weixin.qq.com/document/path/99110
  */
 
-import { WxwMessageType } from "./wxw-webhook.runtime";
+import { WxwMessageType } from './wxw-webhook.runtime';
 
 // 基础消息结构
 export interface WxwBaseMessage {

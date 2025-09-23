@@ -56,7 +56,7 @@ export function wxwMessageBuilder(): WxwMessageBuilder {
 }
 
 // 使用示例和类型守卫
-export const PushServiceHelper = {
+export const WXWMessageHelper = {
   /**
    * 连通性测试消息
    */
@@ -76,23 +76,6 @@ export const PushServiceHelper = {
   ) {
     const message = `### ${title}\n\n${content}`;
     return wxwMessageBuilder().markdown(message);
-  },
-
-  /**
-   * 创建带链接的图文消息
-   */
-  createLinkNews(
-    title: string,
-    description: string,
-    url: string,
-    picUrl?: string,
-  ): WxwNewsArticle {
-    return {
-      title,
-      description,
-      url,
-      picurl: picUrl,
-    };
   },
 
   /**

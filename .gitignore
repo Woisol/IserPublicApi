@@ -395,3 +395,6 @@ Temporary Items
 dist
 .webpack
 .serverless/**/*.zip
+
+# private
+bot-key.json
