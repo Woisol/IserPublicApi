@@ -71,10 +71,7 @@
       "**/*.(t|j)s"
     ],
     "coverageDirectory": "../coverage",
-    "testEnvironment": "node",
-    "moduleNameMapper": {
-      "^@app/(.*)$": "<rootDir>/$1"
-    }
+    "testEnvironment": "node"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
