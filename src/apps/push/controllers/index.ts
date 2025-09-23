@@ -8,7 +8,7 @@ import {
   Redirect,
 } from '@nestjs/common';
 import { type Request } from 'express';
-import { PushService } from 'src/services/push';
+import { PushService } from '@app/apps/push/services';
 
 @Controller('push')
 export class PushController {

@@ -1,7 +1,7 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { PushController } from './controllers/push';
-import { PushService } from './services/push';
-import { AuthorityApiKeyMiddleware } from './middleware/authority-api-key.middleware';
+import { PushController } from './apps/push/controllers';
+import { PushService } from './apps/push/services';
+import { AuthorityApiKeyMiddleware } from './common/middleware/authority-api-key.middleware';
 
 @Module({
   imports: [],

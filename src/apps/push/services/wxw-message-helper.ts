@@ -3,8 +3,8 @@ import type {
   WxwMarkdownMessage,
   WxwMessageBuilder,
   WxwNewsArticle,
-} from '@app/types/push/wxw-webhook';
-import { WxwMessageType } from '@app/types/push/wxw-webhook.runtime';
+} from '@app/apps/push/types/wxw-webhook';
+import { WxwMessageType } from '@app/apps/push/types/wxw-webhook.runtime';
 
 // import {
 //   WxwMessageBuilder

@@ -5,11 +5,11 @@ import type {
   WxwMentionUser,
   WxwNewsArticle,
   WxwWebhookResponse,
-} from '@app/types/push/wxw-webhook';
+} from '@app/apps/push/types/wxw-webhook';
 import {
   WxwErrorCode,
   WxwMessageType,
-} from '@app/types/push/wxw-webhook.runtime';
+} from '@app/apps/push/types/wxw-webhook.runtime';
 import * as fs from 'fs';
 import * as path from 'path';
 
