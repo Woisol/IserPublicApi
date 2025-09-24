@@ -1,0 +1,47 @@
+version: '3.8'
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - SERVER_PORT=3000
+    # 如果需要挂载配置文件或日志目录，可以取消注释以下行
+    # volumes:
+    #   - ./logs:/app/logs
+    #   - ./.env:/app/.env:ro
+    restart: unless-stopped
+    networks:
+      - app-network
+
+  # 如果项目需要数据库，可以取消注释以下服务
+  # postgres:
+  #   image: postgres:15-alpine
+  #   environment:
+  #     POSTGRES_DB: nestjs
+  #     POSTGRES_USER: nestjs
+  #     POSTGRES_PASSWORD: password
+  #   ports:
+  #     - "5432:5432"
+  #   volumes:
+  #     - postgres_data:/var/lib/postgresql/data
+  #   networks:
+  #     - app-network
+
+  # redis:
+  #   image: redis:7-alpine
+  #   ports:
+  #     - "6379:6379"
+  #   networks:
+  #     - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+# volumes:
+#   postgres_data:
