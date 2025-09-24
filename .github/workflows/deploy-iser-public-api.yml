@@ -1,4 +1,4 @@
-name: deploy on self-hosted runner
+name: Deploy ISer Public API
 # run-name: ${{ github.workflow }} - ${{ github.ref }} - ${{ github.sha }}
 on:
   push:

@@ -3,7 +3,7 @@
  * 基于企业微信官方文档: https://developer.work.weixin.qq.com/document/path/99110
  */
 
-import { WxwMessageType } from './wxw-webhook.runtime';
+import { WxwMessageType, WxwTemplateCardType } from './wxw-webhook.runtime';
 
 // 基础消息结构
 export interface WxwBaseMessage {
@@ -174,101 +174,99 @@ export interface WxwNewsNoticeCard {
   card_action?: WxwCardAction;
 }
 
-// 按钮交互模板卡片
-export interface WxwButtonInteractionCard {
-  card_type: WxwTemplateCardType.BUTTON_INTERACTION;
-  source: {
-    icon_url?: string;
-    desc?: string;
-    desc_color?: number;
-  };
-  main_title: {
-    title?: string;
-    desc?: string;
-  };
-  sub_title_text?: string;
-  horizontal_content_list?: Array<{
-    keyname: string;
-    value?: string;
-    type?: number;
-    url?: string;
-    media_id?: string;
-    userid?: string;
-  }>;
-  card_action?: WxwCardAction;
-  button_selection?: {
-    question_key: string;
-    title?: string;
-    option_list: Array<{
-      id: string;
-      text: string;
-    }>;
-    selected_id?: string;
-  };
-  button_list?: WxwCardButton[];
-}
+// // 按钮交互模板卡片
+// export interface WxwButtonInteractionCard {
+//   card_type: WxwTemplateCardType.BUTTON_INTERACTION;
+//   source: {
+//     icon_url?: string;
+//     desc?: string;
+//     desc_color?: number;
+//   };
+//   main_title: {
+//     title?: string;
+//     desc?: string;
+//   };
+//   sub_title_text?: string;
+//   horizontal_content_list?: Array<{
+//     keyname: string;
+//     value?: string;
+//     type?: number;
+//     url?: string;
+//     media_id?: string;
+//     userid?: string;
+//   }>;
+//   card_action?: WxwCardAction;
+//   button_selection?: {
+//     question_key: string;
+//     title?: string;
+//     option_list: Array<{
+//       id: string;
+//       text: string;
+//     }>;
+//     selected_id?: string;
+//   };
+//   button_list?: WxwCardButton[];
+// }
 
-// 投票选择模板卡片
-export interface WxwVoteInteractionCard {
-  card_type: WxwTemplateCardType.VOTE_INTERACTION;
-  source: {
-    icon_url?: string;
-    desc?: string;
-    desc_color?: number;
-  };
-  main_title: {
-    title?: string;
-    desc?: string;
-  };
-  checkbox?: {
-    question_key: string;
-    option_list: Array<{
-      id: string;
-      text: string;
-      is_checked: boolean;
-    }>;
-    mode?: number;
-  };
-  submit_button?: {
-    text: string;
-    key: string;
-  };
-}
+// // 投票选择模板卡片
+// export interface WxwVoteInteractionCard {
+//   card_type: WxwTemplateCardType.VOTE_INTERACTION;
+//   source: {
+//     icon_url?: string;
+//     desc?: string;
+//     desc_color?: number;
+//   };
+//   main_title: {
+//     title?: string;
+//     desc?: string;
+//   };
+//   checkbox?: {
+//     question_key: string;
+//     option_list: Array<{
+//       id: string;
+//       text: string;
+//       is_checked: boolean;
+//     }>;
+//     mode?: number;
+//   };
+//   submit_button?: {
+//     text: string;
+//     key: string;
+//   };
+// }
 
-// 多项选择模板卡片
-export interface WxwMultipleInteractionCard {
-  card_type: WxwTemplateCardType.MULTIPLE_INTERACTION;
-  source: {
-    icon_url?: string;
-    desc?: string;
-    desc_color?: number;
-  };
-  main_title: {
-    title?: string;
-    desc?: string;
-  };
-  select_list?: Array<{
-    question_key: string;
-    title?: string;
-    selected_id?: string;
-    option_list: Array<{
-      id: string;
-      text: string;
-    }>;
-  }>;
-  submit_button?: {
-    text: string;
-    key: string;
-  };
-}
+// // 多项选择模板卡片
+// export interface WxwMultipleInteractionCard {
+//   card_type: WxwTemplateCardType.MULTIPLE_INTERACTION;
+//   source: {
+//     icon_url?: string;
+//     desc?: string;
+//     desc_color?: number;
+//   };
+//   main_title: {
+//     title?: string;
+//     desc?: string;
+//   };
+//   select_list?: Array<{
+//     question_key: string;
+//     title?: string;
+//     selected_id?: string;
+//     option_list: Array<{
+//       id: string;
+//       text: string;
+//     }>;
+//   }>;
+//   submit_button?: {
+//     text: string;
+//     key: string;
+//   };
+// }
 
 // 模板卡片消息联合类型
-export type WxwTemplateCard =
-  | WxwTextNoticeCard
-  | WxwNewsNoticeCard
-  | WxwButtonInteractionCard
-  | WxwVoteInteractionCard
-  | WxwMultipleInteractionCard;
+export type WxwTemplateCard = WxwTextNoticeCard | WxwNewsNoticeCard;
+// | WxwButtonInteractionCard
+// | WxwVoteInteractionCard
+// | WxwMultipleInteractionCard;
 
 // 模板卡片消息
 export interface WxwTemplateCardMessage extends WxwBaseMessage {

@@ -1,3 +1,6 @@
+/**
+ * webhook 文档 https://docs.github.com/zh/webhooks/webhook-events-and-payloads
+ */
 import { Injectable, Logger } from '@nestjs/common';
 import {
   GitHubWebhookPayload,
@@ -71,29 +74,34 @@ export class PushApplicationsRepoService {
   private _handleMemberEvent(
     payload: MemberWebhookPayload,
   ): WebhookProcessResult {
-    const { action, member, repository, sender, changes } = payload;
+    const { action, member, repository, changes } = payload;
 
     let message = '';
 
     switch (action) {
       case 'added':
-        message = `🎉 ${member.login} 被 ${sender.login} 添加为 ${repository.full_name} 的协作者`;
+        message = `「Collaborate」新增协作者 <font color="info">${member.login}</font>
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})`;
         break;
 
       case 'removed':
-        message = `👋 ${member.login} 被 ${sender.login} 从 ${repository.full_name} 移除协作者权限`;
+        message = `「Collaborate」移除协作者 <font color="warning">${member.login}</font>
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})`;
         break;
 
       case 'edited': {
         const oldPermission = changes?.permission?.from || '未知';
         const newPermission = changes?.permission?.to || '未知';
-        message = `🔧 ${sender.login} 将 ${member.login} 在 ${repository.full_name} 的权限从 ${oldPermission} 更改为 ${newPermission}`;
+        message = `「Collaborate」权限变更
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
+> <font color="comment">成员：</font>${member.login}
+> <font color="comment">变更：</font>${oldPermission} → ${newPermission}`;
         break;
       }
     }
 
     // 这里可以添加实际的通知发送逻辑，比如发送到企业微信、钉钉等
-    this.sendNotification(message, 'member', payload);
+    this.sendNotification(message);
 
     return {
       success: true,
@@ -110,46 +118,79 @@ export class PushApplicationsRepoService {
   private _handleIssuesEvent(
     payload: IssuesWebhookPayload,
   ): WebhookProcessResult {
-    const { action, issue, repository, sender, assignee, label } = payload;
+    const { action, issue, repository, sender } = payload;
 
     let message = '';
     const issueUrl = issue.html_url;
 
     switch (action) {
       case 'opened':
-        message = `🐛 新问题创建\n标题: ${issue.title}\n创建者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
+        message = `「Issue」新建 Issue
+> <font color="comment">标题：</font>[#${issue.number} ${issue.title}](${issueUrl})
+> <font color="comment">仓库：</font>[${repository.full_name}](${repository.html_url})
+> <font color="comment">创建者：</font>${sender.login}
+> <font color="comment">创建时间：</font>${new Date(issue.created_at).toLocaleString('zh-CN')}`;
         break;
 
-      case 'closed':
-        message = `✅ 问题已关闭\n标题: ${issue.title}\n关闭者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'closed':
+      //         message = `## ✅ 问题已关闭
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 关闭者： ${sender.login}
+      // > 状态： ✅ 已完成
+      // > 关闭时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'reopened':
-        message = `🔄 问题已重新打开\n标题: ${issue.title}\n操作者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'reopened':
+      //         message = `## 🔄 问题重新打开
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 操作者： ${sender.login}
+      // > 状态： 🔄 重新处理
+      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'assigned':
-        message = `👤 问题已分配\n标题: ${issue.title}\n分配给: ${assignee?.login}\n操作者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'assigned':
+      //         message = `## 👤 问题已分配
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 分配给： ${assignee?.login}
+      // > 操作者： ${sender.login}
+      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'unassigned':
-        message = `👤 问题分配已取消\n标题: ${issue.title}\n操作者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'unassigned':
+      //         message = `## 👤 取消问题分配
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 操作者： ${sender.login}
+      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'labeled':
-        message = `🏷️ 问题添加标签\n标题: ${issue.title}\n标签: ${label?.name}\n操作者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'labeled':
+      //         message = `## 🏷️ 问题添加标签
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 新标签： \`${label?.name}\`
+      // > 操作者： ${sender.login}
+      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'unlabeled':
-        message = `🏷️ 问题移除标签\n标题: ${issue.title}\n标签: ${label?.name}\n操作者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'unlabeled':
+      //         message = `## 🏷️ 问题移除标签
+      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
+      // > 仓库： [${repository.full_name}](${repository.html_url})
+      // > 移除标签： \`${label?.name}\`
+      // > 操作者： ${sender.login}
+      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
+      //         break;
 
-      case 'edited':
-        message = `✏️ 问题已编辑\n标题: ${issue.title}\n编辑者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-        break;
+      //       case 'edited':
+      //         message = `✏️ 问题已编辑\n标题: ${issue.title}\n编辑者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
+      //         break;
     }
 
-    this.sendNotification(message, 'issues', payload);
+    this.sendNotification(message);
 
     return {
       success: true,
@@ -170,38 +211,55 @@ export class PushApplicationsRepoService {
   private _handleReleaseEvent(
     payload: ReleaseWebhookPayload,
   ): WebhookProcessResult {
-    const { action, release, repository, sender } = payload;
+    const { action, release, repository } = payload;
 
     let message = '';
     const releaseUrl = release.html_url;
 
     switch (action) {
       case 'published':
-        message = `🚀 新版本发布\n版本: ${release.tag_name}\n名称: ${release.name}\n发布者: ${release.author.login}\n仓库: ${repository.full_name}\n链接: ${releaseUrl}`;
+        message = `「Release」<font color="info">[${release.tag_name}](${releaseUrl})</font> 发布
+> <font color="comment">名称：</font>${release.name}
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
+
+${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release.body.length > 200 ? '...' : '') : ''}`;
         break;
 
-      case 'unpublished':
-        message = `📦 版本取消发布\n版本: ${release.tag_name}\n操作者: ${sender.login}\n仓库: ${repository.full_name}`;
-        break;
+        //       case 'unpublished':
+        //         message = `「Release」版本 <font color="warning">${release.tag_name}</font> 取消发布
+        // > 仓库： [${repository.name}](${repository.html_url})
+        // > 操作者： ${sender.login}`;
+        //         break;
 
-      case 'created':
-        message = `📝 版本草稿创建\n版本: ${release.tag_name}\n创建者: ${sender.login}\n仓库: ${repository.full_name}`;
-        break;
+        //       case 'created':
+        //         message = `「Release」版本草稿 <font color="comment">${release.tag_name}</font> 创建
+        // > 仓库： [${repository.name}](${repository.html_url})
+        // > 创建者： ${sender.login}`;
+        //         break;
 
-      case 'edited':
-        message = `✏️ 版本信息已编辑\n版本: ${release.tag_name}\n编辑者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${releaseUrl}`;
-        break;
+        //       case 'edited':
+        //         message = `「Release」版本 <font color="info">[${release.tag_name}](${releaseUrl})</font> 编辑
+        // > 仓库： [${repository.name}](${repository.html_url})
+        // > 编辑者： ${sender.login}`;
+        //         break;
 
-      case 'deleted':
-        message = `🗑️ 版本已删除\n版本: ${release.tag_name}\n删除者: ${sender.login}\n仓库: ${repository.full_name}`;
-        break;
+        //       case 'deleted':
+        //         message = `「Release」版本 <font color="warning">${release.tag_name}</font> 删除
+        // > 仓库： [${repository.name}](${repository.html_url})
+        // > 删除者： ${sender.login}`;
+        //         break;
 
-      case 'prereleased':
-        message = `🧪 预发布版本\n版本: ${release.tag_name}\n发布者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${releaseUrl}`;
+        //       case 'prereleased':
+        //         message = `「Release」预发布版本 <font color="info">[${release.tag_name}](${releaseUrl})</font>
+        // > 名称： ${release.name}
+        // > 仓库： [${repository.name}](${repository.html_url})
+        // > 发布者： ${sender.login}
+
+        // ${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release.body.length > 200 ? '...' : '') : ''}`;
         break;
     }
 
-    this.sendNotification(message, 'release', payload);
+    this.sendNotification(message);
 
     return {
       success: true,
@@ -211,7 +269,7 @@ export class PushApplicationsRepoService {
       data: {
         tag_name: release.tag_name,
         release_name: release.name,
-        repository: repository.full_name,
+        repository: repository.name,
       },
     };
   }
@@ -238,25 +296,63 @@ export class PushApplicationsRepoService {
     const workflowUrl = workflow_run.html_url;
     const conclusion = workflow_run.conclusion;
 
+    const duration =
+      workflow_run.run_started_at && workflow_run.updated_at
+        ? Math.round(
+            (new Date(workflow_run.updated_at).getTime() -
+              new Date(workflow_run.run_started_at).getTime()) /
+              1000,
+          )
+        : 0;
+
+    const durationText =
+      duration > 0
+        ? `${Math.floor(duration / 60)}分${duration % 60}秒`
+        : '未知';
+
     if (conclusion === 'success') {
-      message = `✅ 工作流执行成功\n工作流: ${workflow_run.name}\n分支: ${workflow_run.head_branch}\n触发者: ${workflow_run.actor.login}\n仓库: ${repository.full_name}\n链接: ${workflowUrl}`;
+      message = `「Workflow」✅[${workflow_run.name} ](${workflowUrl})执行成功
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
+> <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
+> <font color="comment">执行时长：</font>${durationText}`;
     } else if (conclusion === 'failure') {
-      message = `❌ 工作流执行失败\n工作流: ${workflow_run.name}\n分支: ${workflow_run.head_branch}\n触发者: ${workflow_run.actor.login}\n仓库: ${repository.full_name}\n链接: ${workflowUrl}`;
-    } else {
-      // 其他状态如 cancelled, skipped 等
-      const statusEmoji =
-        {
-          cancelled: '🚫',
-          skipped: '⏭️',
-          neutral: '➖',
-          timed_out: '⏰',
-          action_required: '🔔',
-        }[conclusion] || '❓';
+      message = `「Workflow」❌[${workflow_run.name}](${workflowUrl})执行失败
+> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
+> <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
+> <font color="comment">执行时长：</font>${durationText}
 
-      message = `${statusEmoji} 工作流: ${conclusion}\n工作流: ${workflow_run.name}\n分支: ${workflow_run.head_branch}\n触发者: ${workflow_run.actor.login}\n仓库: ${repository.full_name}\n链接: ${workflowUrl}`;
+⚠️ <font color="warning">请及时检查并修复问题</font>`;
     }
+    //     else {
+    //       // 其他状态如 cancelled, skipped 等
+    //       const statusEmoji =
+    //         {
+    //           cancelled: '🚫',
+    //           skipped: '⏭️',
+    //           neutral: '➖',
+    //           timed_out: '⏰',
+    //           action_required: '🔔',
+    //         }[conclusion] || '❓';
 
-    this.sendNotification(message, 'workflow', payload);
+    //       const statusText =
+    //         {
+    //           cancelled: '已取消',
+    //           skipped: '已跳过',
+    //           neutral: '中性',
+    //           timed_out: '超时',
+    //           action_required: '需要操作',
+    //         }[conclusion] || conclusion;
+
+    //       message = `## ${statusEmoji} 工作流${statusText}
+    // > 工作流： [${workflow_run.name}](${workflowUrl})
+    // > 仓库： [${repository.full_name}](${repository.html_url})
+    // > 分支： \`${workflow_run.head_branch}\`
+    // > 触发者： ${workflow_run.actor.login}
+    // > 状态： ${statusEmoji} ${statusText}
+    // > 时间： ${new Date(workflow_run.updated_at).toLocaleString('zh-CN')}`;
+    //     }
+
+    this.sendNotification(message);
 
     return {
       success: true,
@@ -277,11 +373,11 @@ export class PushApplicationsRepoService {
    */
   private sendNotification(
     message: string,
-    type: string,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _payload: GitHubWebhookPayload,
+    _payload?: GitHubWebhookPayload,
   ): void {
-    this.pushService.sendMarkdownMessage(message);
+    // 使用 void 操作符忽略 Promise
+    void this.pushService.sendMarkdownMessage(message, 'repo');
 
     // TODO: 在这里添加实际的通知发送逻辑
     // 例如：
