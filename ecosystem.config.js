@@ -2,14 +2,14 @@ module.exports = {
   apps: [{
     name: 'IserPublicApi',
     script: './main.js',
+    // env_inherit: true, // 不存在
     env: {
       NODE_ENV: 'development'
     },
     env_production: {
       NODE_ENV: 'production',
-      SERVER_PORT: process.env.SERVER_PORT || 3000,
-      AUTHORITY_API_KEY: process.env.AUTHORITY_API_KEY,
-      WXWORK_WEBHOOK_URL: process.env.WXWORK_WEBHOOK_URL
+      // 继承所有当前环境变量
+      ...process.env
     },
     instances: 1,
     exec_mode: 'fork',

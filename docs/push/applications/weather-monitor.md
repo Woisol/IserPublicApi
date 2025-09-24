@@ -15,14 +15,14 @@
 在 `.env` 文件中配置以下环境变量：
 
 ```bash
-# 和风天气API密钥 (必需)
+# 和风天气API密钥
 QWEATHER_API_KEY=your_qweather_api_key
 
-# 和风天气API主机 (可选，默认: https://devapi.qweather.com)
+# 和风天气API主机
 QWEATHER_API_HOST=https://devapi.qweather.com
 
-# 监控位置坐标 (可选，默认: 116.41,39.92 北京)
-WEATHER_LOCATION=116.41,39.92
+# 监控位置坐标
+QWEATHER_LOCATION=116.41,39.92
 ```
 
 ### 获取和风天气API密钥
