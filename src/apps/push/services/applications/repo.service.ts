@@ -1,5 +1,6 @@
 /**
  * webhook 文档 https://docs.github.com/zh/webhooks/webhook-events-and-payloads
+ * 微信进企微全员群以后不要退出会导致企微本体也退出()
  */
 import { Injectable, Logger } from '@nestjs/common';
 import {
@@ -311,12 +312,12 @@ ${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release
         : '未知';
 
     if (conclusion === 'success') {
-      message = `「Workflow」✅[${workflow_run.name} ](${workflowUrl})执行成功
+      message = `「Workflow」✅ [${workflow_run.name} ](${workflowUrl}) 执行成功
 > <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
 > <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
 > <font color="comment">执行时长：</font>${durationText}`;
     } else if (conclusion === 'failure') {
-      message = `「Workflow」❌[${workflow_run.name}](${workflowUrl})执行失败
+      message = `「Workflow」❌ [${workflow_run.name}](${workflowUrl}) 执行失败
 > <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
 > <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
 > <font color="comment">执行时长：</font>${durationText}
