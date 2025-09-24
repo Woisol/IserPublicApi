@@ -275,7 +275,7 @@ export class PushApplicationsRepoService {
       };
     }
 
-    let message = '';
+    let message: WxwMarkdownInfo;
     const workflowUrl = workflow_run.html_url;
     const conclusion = workflow_run.conclusion;
 
@@ -294,17 +294,26 @@ export class PushApplicationsRepoService {
         : '未知';
 
     if (conclusion === 'success') {
-      message = `「Workflow」✅ [${workflow_run.name} ](${workflowUrl}) 执行成功
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
-> <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
-> <font color="comment">执行时长：</font>${durationText}`;
+      message = {
+        type: 'Workflow',
+        title: `✅ [${workflow_run.name} ](${workflowUrl}) 执行成功`,
+        content: [
+          { 仓库: `[${repository.name}](${repository.html_url})` },
+          { 分支: `\`${workflow_run.head_branch}\`` },
+          { 执行时长: durationText },
+          `⚠️ <font color="warning">请及时检查并修复问题</font>`,
+        ],
+      };
     } else if (conclusion === 'failure') {
-      message = `「Workflow」❌ [${workflow_run.name}](${workflowUrl}) 执行失败
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
-> <font color="comment">分支：</font>\`${workflow_run.head_branch}\`
-> <font color="comment">执行时长：</font>${durationText}
-
-⚠️ <font color="warning">请及时检查并修复问题</font>`;
+      message = {
+        type: 'Workflow',
+        title: `❌ [${workflow_run.name}](${workflowUrl}) 执行失败`,
+        content: [
+          { 仓库: `[${repository.name}](${repository.html_url})` },
+          { 分支: `\`${workflow_run.head_branch}\`` },
+          { 执行时长: durationText },
+        ],
+      };
     }
     //     else {
     //       // 其他状态如 cancelled, skipped 等
@@ -335,7 +344,7 @@ export class PushApplicationsRepoService {
     // > 时间： ${new Date(workflow_run.updated_at).toLocaleString('zh-CN')}`;
     //     }
 
-    this.sendNotification(message);
+    this.sendStructuredNotification(message);
 
     return {
       success: true,
@@ -349,18 +358,6 @@ export class PushApplicationsRepoService {
         repository: repository.full_name,
       },
     };
-  }
-
-  /**
-   * 发送通知消息（这里可以根据实际需求对接不同的通知服务）
-   */
-  private sendNotification(
-    message: string,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _payload?: GitHubWebhookPayload,
-  ): void {
-    // 使用 void 操作符忽略 Promise
-    void this.pushService.sendMarkdownMessage(message, 'repo');
   }
 
   /**

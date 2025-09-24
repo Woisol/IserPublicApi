@@ -309,16 +309,6 @@ export class DeviceMonitorService {
   }
 
   /**
-   * 发送通知消息
-   */
-  private sendNotification(message: string): void {
-    // this.logger.log(`发送设备监控通知: ${message.substring(0, 100)}...`);
-
-    // 使用 void 操作符忽略 Promise
-    void this.pushService.sendMarkdownMessage(message, 'monitor');
-  }
-
-  /**
    * 发送结构化 Markdown 通知消息
    */
   private sendStructuredNotification(markdownInfo: WxwMarkdownInfo): void {

@@ -32,6 +32,10 @@ export function wxwMessageBuilder(): WxwMessageBuilder {
     markdownInfo(info: WxwMarkdownInfo) {
       let res: string = `${info.type ? '「' + info.type + '」' : ''}${info.title}`;
       info.content.map((value, key) => {
+        if (typeof value === 'string') {
+          res += `\n${value}`;
+          return;
+        }
         const subtitle = Object.keys(value)[0];
         const content = Object.values(value)[0];
         if (typeof content === 'object') {

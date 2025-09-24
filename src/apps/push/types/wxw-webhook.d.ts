@@ -9,9 +9,12 @@ import { WxwMessageType, WxwTemplateCardType } from './wxw-webhook.runtime';
 //   [key: string]: T<string>;
 // };
 
-export type WxwMarkdownInfoContent = {
-  [key: string]: string | { [key: string]: string };
-}[];
+export type WxwMarkdownInfoContent = (
+  | string
+  | {
+      [key: string]: string | { [key: string]: string };
+    }
+)[];
 
 export interface WxwMarkdownInfo {
   type?: string;
