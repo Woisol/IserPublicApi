@@ -379,18 +379,6 @@ ${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release
   ): void {
     // 使用 void 操作符忽略 Promise
     void this.pushService.sendMarkdownMessage(message, 'repo');
-
-    // TODO: 在这里添加实际的通知发送逻辑
-    // 例如：
-    // - 发送到企业微信群
-    // - 发送到钉钉群
-    // - 发送邮件
-    // - 发送到 Slack
-    // - 存储到数据库
-
-    // 示例：可以调用其他服务来发送通知
-    // await this.wxMessageService.sendMessage(message);
-    // await this.emailService.sendEmail(message);
   }
 
   /**

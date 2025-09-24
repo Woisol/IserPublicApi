@@ -9,7 +9,7 @@ import { PushService } from './apps/push/services';
 import { BotKeyLoader } from './apps/push/services/botkey-loader';
 import { PushApplicationsRepoService } from './apps/push/services/applications/repo.service';
 import { AuthorityApiKeyMiddleware } from './common/middleware/authority-api-key.middleware';
-import { ApplicationsRepoController } from './apps/push/controllers/applications/applications.controller';
+import { ApplicationsRepoController } from './apps/push/controllers/applications/repo.controller';
 
 @Module({
   imports: [],
