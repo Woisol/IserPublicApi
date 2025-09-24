@@ -1,12 +1,22 @@
 import { MiddlewareConsumer, Module, NestModule } from '@nestjs/common';
-import { PushController } from './apps/push/controllers';
+import {
+  PushRawMessageController,
+  PushChannelsController,
+  PushMessagesController,
+  PushApplicationsRepoController,
+} from './apps/push/controllers';
 import { PushService } from './apps/push/services';
 import { BotKeyLoader } from './apps/push/services/botkey-loader';
 import { AuthorityApiKeyMiddleware } from './common/middleware/authority-api-key.middleware';
 
 @Module({
   imports: [],
-  controllers: [PushController],
+  controllers: [
+    PushRawMessageController,
+    PushChannelsController,
+    PushMessagesController,
+    PushApplicationsRepoController,
+  ],
   providers: [BotKeyLoader, PushService],
 })
 export class AppModule implements NestModule {
