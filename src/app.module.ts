@@ -24,6 +24,9 @@ import { ApplicationsRepoController } from './apps/push/controllers/applications
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
-    consumer.apply(AuthorityApiKeyMiddleware).forRoutes('push/*');
+    consumer
+      .apply(AuthorityApiKeyMiddleware)
+      .exclude('push/repo')
+      .forRoutes('push/*');
   }
 }
