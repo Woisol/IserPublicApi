@@ -11,7 +11,7 @@ import { PushService } from '@app/apps/push/services';
 
 @Controller('push')
 export class MessagesController {
-  constructor(private readonly pushService: PushService) { }
+  constructor(private readonly pushService: PushService) {}
 
   /**
    * 根据渠道发送文本消息

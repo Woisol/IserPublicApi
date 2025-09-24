@@ -3,7 +3,7 @@ import { PushService } from '@app/apps/push/services';
 
 @Controller('push/channels')
 export class ChannelsController {
-  constructor(private readonly pushService: PushService) { }
+  constructor(private readonly pushService: PushService) {}
 
   /**
    * 获取所有可用渠道

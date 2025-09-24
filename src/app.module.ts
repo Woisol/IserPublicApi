@@ -7,7 +7,9 @@ import {
 } from './apps/push/controllers';
 import { PushService } from './apps/push/services';
 import { BotKeyLoader } from './apps/push/services/botkey-loader';
+import { PushApplicationsRepoService } from './apps/push/services/applications/repo.service';
 import { AuthorityApiKeyMiddleware } from './common/middleware/authority-api-key.middleware';
+import { ApplicationsRepoController } from './apps/push/controllers/applications/applications.controller';
 
 @Module({
   imports: [],
@@ -16,8 +18,9 @@ import { AuthorityApiKeyMiddleware } from './common/middleware/authority-api-key
     PushChannelsController,
     PushMessagesController,
     PushApplicationsRepoController,
+    ApplicationsRepoController,
   ],
-  providers: [BotKeyLoader, PushService],
+  providers: [BotKeyLoader, PushService, PushApplicationsRepoService],
 })
 export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
