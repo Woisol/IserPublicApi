@@ -8,12 +8,13 @@ import {
   WebhookProcessResult,
 } from '../../types/applications/repo.d';
 import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
+import { PushService } from '..';
 
 @Injectable()
 export class PushApplicationsRepoService {
-  private readonly logger = new Logger(PushApplicationsRepoService.name);
-
   /** 与 GitHub Repo 通知相关的逻辑 */
+  private readonly logger = new Logger(PushApplicationsRepoService.name);
+  constructor(private readonly pushService: PushService) {}
 
   /**
    * 处理 GitHub Webhook 事件
@@ -29,16 +30,16 @@ export class PushApplicationsRepoService {
     try {
       switch (event) {
         case GitHubWebhookEvent.MEMBER:
-          return this.handleMemberEvent(payload as MemberWebhookPayload);
+          return this._handleMemberEvent(payload as MemberWebhookPayload);
 
         case GitHubWebhookEvent.ISSUES:
-          return this.handleIssuesEvent(payload as IssuesWebhookPayload);
+          return this._handleIssuesEvent(payload as IssuesWebhookPayload);
 
         case GitHubWebhookEvent.RELEASE:
-          return this.handleReleaseEvent(payload as ReleaseWebhookPayload);
+          return this._handleReleaseEvent(payload as ReleaseWebhookPayload);
 
         case GitHubWebhookEvent.WORKFLOW_RUN:
-          return this.handleWorkflowRunEvent(
+          return this._handleWorkflowRunEvent(
             payload as WorkflowRunWebhookPayload,
           );
 
@@ -67,7 +68,7 @@ export class PushApplicationsRepoService {
   /**
    * 处理协作者事件（添加、删除或更改权限）
    */
-  private handleMemberEvent(
+  private _handleMemberEvent(
     payload: MemberWebhookPayload,
   ): WebhookProcessResult {
     const { action, member, repository, sender, changes } = payload;
@@ -106,7 +107,7 @@ export class PushApplicationsRepoService {
   /**
    * 处理 Issue 事件
    */
-  private handleIssuesEvent(
+  private _handleIssuesEvent(
     payload: IssuesWebhookPayload,
   ): WebhookProcessResult {
     const { action, issue, repository, sender, assignee, label } = payload;
@@ -166,7 +167,7 @@ export class PushApplicationsRepoService {
   /**
    * 处理 Release 事件
    */
-  private handleReleaseEvent(
+  private _handleReleaseEvent(
     payload: ReleaseWebhookPayload,
   ): WebhookProcessResult {
     const { action, release, repository, sender } = payload;
@@ -218,7 +219,7 @@ export class PushApplicationsRepoService {
   /**
    * 处理 Workflow 运行事件
    */
-  private handleWorkflowRunEvent(
+  private _handleWorkflowRunEvent(
     payload: WorkflowRunWebhookPayload,
   ): WebhookProcessResult {
     const { action, workflow_run, repository } = payload;
@@ -280,7 +281,7 @@ export class PushApplicationsRepoService {
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _payload: GitHubWebhookPayload,
   ): void {
-    this.logger.log(`Sending notification [${type}]: ${message}`);
+    this.pushService.sendMarkdownMessage(message);
 
     // TODO: 在这里添加实际的通知发送逻辑
     // 例如：
