@@ -10,7 +10,7 @@ jobs:
     runs-on: self-hosted
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v5
 
       # - name: Use Node.js 18
       #   uses: actions/setup-node@v3
@@ -24,7 +24,7 @@ jobs:
         run: pnpm run build
 
       - name: move product
-        run: cp -r ./dist ~/servers/iser-public-api/
+        run: cp -r ./dist/* ~/servers/iser-public-api/
 
       - name: Deploy project
         run: |
