@@ -25,18 +25,27 @@ jobs:
       - name: Build project
         run: pnpm run build
 
-      - name: Remove previous build artifacts
-        run: rm -rf ${{ env.SERVER_LOCAL_PATH }}/*
+      # - name: Remove previous build artifacts
+      #   run: rm -rf ${{ env.SERVER_LOCAL_PATH }}/*
 
       - name: Move product
-        run: cp -r ./dist/* ${{ env.SERVER_LOCAL_PATH }}/
+        run: |
+          cp -r ./dist/* ${{ env.SERVER_LOCAL_PATH }}/
+          cp ./package.json ${{ env.SERVER_LOCAL_PATH }}/
+          cp ./ecosystem.config.js ${{ env.SERVER_LOCAL_PATH }}/
+
+      - name: Stop existing PM2 process
+        run: pm2 stop IserPublicApi || true
+        continue-on-error: true
 
       - name: Deploy project
         run: |
-          pm2 startOrRestart ${{ env.SERVER_LOCAL_PATH }}/main.js --name IserPublicApi
+          pm2 start ${{ env.SERVER_LOCAL_PATH }}/main.js --env production
+      # cd ${{ env.SERVER_LOCAL_PATH }}
+      # pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
         env:
           SERVER_PORT: 6990
           AUTHORITY_API_KEY: ${{ secrets.AUTHORITY_API_KEY }}
           WXWORK_WEBHOOK_URL: https://qyapi.weixin.qq.com/cgi-bin/webhook/send
-      - name: remove node_modules
+      - name: Clean up
         run: rm -rf node_modules
