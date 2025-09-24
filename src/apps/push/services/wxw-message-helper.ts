@@ -3,6 +3,7 @@ import type {
   WxwMarkdownMessage,
   WxwMessageBuilder,
   WxwNewsArticle,
+  WxwMarkdownInfo,
 } from '@app/apps/push/types/wxw-webhook';
 import { WxwMessageType } from '@app/apps/push/types/wxw-webhook.runtime';
 
@@ -27,6 +28,22 @@ export function wxwMessageBuilder(): WxwMessageBuilder {
         msgtype: WxwMessageType.MARKDOWN,
         markdown: { content },
       };
+    },
+    markdownInfo(info: WxwMarkdownInfo) {
+      let res: string = `${info.type ? '「' + info.type + '」' : ''}${info.title}`;
+      info.content.map((value, key) => {
+        const subtitle = Object.keys(value)[0];
+        const content = Object.values(value)[0];
+        if (typeof content === 'object') {
+          res += `\n\n**${subtitle}**`;
+          Object.entries(content).forEach(([key, value]) => {
+            res += `\n> <font color="comment">${key}：</font>${value}`;
+          });
+        } else if (typeof content === 'string') {
+          res += `\n> <font color="comment">${subtitle}：</font>${content}`;
+        }
+      });
+      return this.markdown(res);
     },
     image(base64, md5) {
       return {

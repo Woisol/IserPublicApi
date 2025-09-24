@@ -12,6 +12,7 @@ import {
   WebhookProcessResult,
 } from '../../types/applications/repo.d';
 import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
+import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import { PushService } from '..';
 
 @Injectable()
@@ -77,32 +78,49 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, member, repository, changes } = payload;
 
-    let message = '';
+    let markdownInfo: WxwMarkdownInfo;
 
     switch (action) {
       case 'added':
-        message = `「Collaborate」新增协作者 <font color="info">${member.login}</font>
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})`;
+        markdownInfo = {
+          type: 'Collaborate',
+          title: `新增协作者 <font color="info">${member.login}</font>`,
+          content: [{ 仓库: `[${repository.name}](${repository.html_url})` }],
+        };
         break;
 
       case 'removed':
-        message = `「Collaborate」移除协作者 <font color="warning">${member.login}</font>
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})`;
+        markdownInfo = {
+          type: 'Collaborate',
+          title: `移除协作者 <font color="warning">${member.login}</font>`,
+          content: [{ 仓库: `[${repository.name}](${repository.html_url})` }],
+        };
         break;
 
       case 'edited': {
         const oldPermission = changes?.permission?.from || '未知';
         const newPermission = changes?.permission?.to || '未知';
-        message = `「Collaborate」权限变更
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
-> <font color="comment">成员：</font>${member.login}
-> <font color="comment">变更：</font>${oldPermission} → ${newPermission}`;
+        markdownInfo = {
+          type: 'Collaborate',
+          title: '权限变更',
+          content: [
+            { 仓库: `[${repository.name}](${repository.html_url})` },
+            { 成员: member.login },
+            { 变更: `${oldPermission} → ${newPermission}` },
+          ],
+        };
         break;
       }
+
+      default:
+        markdownInfo = {
+          type: 'Collaborate',
+          title: '未知操作',
+          content: [{ 操作类型: action }],
+        };
     }
 
-    // 这里可以添加实际的通知发送逻辑，比如发送到企业微信、钉钉等
-    this.sendNotification(message);
+    this.sendStructuredNotification(markdownInfo, payload);
 
     return {
       success: true,
@@ -121,77 +139,46 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, issue, repository, sender } = payload;
 
-    let message = '';
+    let markdownInfo: WxwMarkdownInfo;
     const issueUrl = issue.html_url;
 
     switch (action) {
       case 'opened':
-        message = `「Issue」新建 Issue
-> <font color="comment">标题：</font>[#${issue.number} ${issue.title}](${issueUrl})
-> <font color="comment">仓库：</font>[${repository.full_name}](${repository.html_url})
-> <font color="comment">创建者：</font>${sender.login}
-> <font color="comment">创建时间：</font>${new Date(issue.created_at).toLocaleString('zh-CN')}`;
+        markdownInfo = {
+          type: 'Issue',
+          title: '新建 Issue',
+          content: [
+            { 标题: `[#${issue.number} ${issue.title}](${issueUrl})` },
+            { 仓库: `[${repository.full_name}](${repository.html_url})` },
+            { 创建者: sender.login },
+            { 创建时间: new Date(issue.created_at).toLocaleString('zh-CN') },
+            ...(issue.body
+              ? [
+                  {
+                    描述:
+                      issue.body.substring(0, 200) +
+                      (issue.body.length > 200 ? '...' : ''),
+                  },
+                ]
+              : []),
+          ],
+        };
         break;
 
-      //       case 'closed':
-      //         message = `## ✅ 问题已关闭
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 关闭者： ${sender.login}
-      // > 状态： ✅ 已完成
-      // > 关闭时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'reopened':
-      //         message = `## 🔄 问题重新打开
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 操作者： ${sender.login}
-      // > 状态： 🔄 重新处理
-      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'assigned':
-      //         message = `## 👤 问题已分配
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 分配给： ${assignee?.login}
-      // > 操作者： ${sender.login}
-      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'unassigned':
-      //         message = `## 👤 取消问题分配
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 操作者： ${sender.login}
-      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'labeled':
-      //         message = `## 🏷️ 问题添加标签
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 新标签： \`${label?.name}\`
-      // > 操作者： ${sender.login}
-      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'unlabeled':
-      //         message = `## 🏷️ 问题移除标签
-      // > 标题： [#${issue.number} ${issue.title}](${issueUrl})
-      // > 仓库： [${repository.full_name}](${repository.html_url})
-      // > 移除标签： \`${label?.name}\`
-      // > 操作者： ${sender.login}
-      // > 操作时间： ${new Date().toLocaleString('zh-CN')}`;
-      //         break;
-
-      //       case 'edited':
-      //         message = `✏️ 问题已编辑\n标题: ${issue.title}\n编辑者: ${sender.login}\n仓库: ${repository.full_name}\n链接: ${issueUrl}`;
-      //         break;
+      default:
+        markdownInfo = {
+          type: 'Issue',
+          title: `${action} Issue`,
+          content: [
+            { 标题: `[#${issue.number} ${issue.title}](${issueUrl})` },
+            { 仓库: `[${repository.full_name}](${repository.html_url})` },
+            { 操作者: sender.login },
+            { 操作时间: new Date().toLocaleString('zh-CN') },
+          ],
+        };
     }
 
-    this.sendNotification(message);
+    this.sendStructuredNotification(markdownInfo, payload);
 
     return {
       success: true,
@@ -214,53 +201,48 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, release, repository } = payload;
 
-    let message = '';
+    let markdownInfo: WxwMarkdownInfo;
     const releaseUrl = release.html_url;
 
     switch (action) {
       case 'published':
-        message = `「Release」<font color="info">[${release.tag_name}](${releaseUrl})</font> 发布
-> <font color="comment">名称：</font>${release.name}
-> <font color="comment">仓库：</font>[${repository.name}](${repository.html_url})
-
-${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release.body.length > 200 ? '...' : '') : ''}`;
+        markdownInfo = {
+          type: 'Release',
+          title: `<font color="info">[${release.tag_name}](${releaseUrl})</font> 发布`,
+          content: [
+            { 版本名称: release.name || release.tag_name },
+            { 仓库: `[${repository.name}](${repository.html_url})` },
+            {
+              发布时间: new Date(
+                release.published_at || Date.now(),
+              ).toLocaleString('zh-CN'),
+            },
+            ...(release.body
+              ? [
+                  {
+                    发布说明:
+                      release.body.substring(0, 300) +
+                      (release.body.length > 300 ? '...' : ''),
+                  },
+                ]
+              : []),
+          ],
+        };
         break;
 
-        //       case 'unpublished':
-        //         message = `「Release」版本 <font color="warning">${release.tag_name}</font> 取消发布
-        // > 仓库： [${repository.name}](${repository.html_url})
-        // > 操作者： ${sender.login}`;
-        //         break;
-
-        //       case 'created':
-        //         message = `「Release」版本草稿 <font color="comment">${release.tag_name}</font> 创建
-        // > 仓库： [${repository.name}](${repository.html_url})
-        // > 创建者： ${sender.login}`;
-        //         break;
-
-        //       case 'edited':
-        //         message = `「Release」版本 <font color="info">[${release.tag_name}](${releaseUrl})</font> 编辑
-        // > 仓库： [${repository.name}](${repository.html_url})
-        // > 编辑者： ${sender.login}`;
-        //         break;
-
-        //       case 'deleted':
-        //         message = `「Release」版本 <font color="warning">${release.tag_name}</font> 删除
-        // > 仓库： [${repository.name}](${repository.html_url})
-        // > 删除者： ${sender.login}`;
-        //         break;
-
-        //       case 'prereleased':
-        //         message = `「Release」预发布版本 <font color="info">[${release.tag_name}](${releaseUrl})</font>
-        // > 名称： ${release.name}
-        // > 仓库： [${repository.name}](${repository.html_url})
-        // > 发布者： ${sender.login}
-
-        // ${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release.body.length > 200 ? '...' : '') : ''}`;
-        break;
+      default:
+        markdownInfo = {
+          type: 'Release',
+          title: `${action} Release`,
+          content: [
+            { 版本: `[${release.tag_name}](${releaseUrl})` },
+            { 仓库: `[${repository.name}](${repository.html_url})` },
+            { 操作时间: new Date().toLocaleString('zh-CN') },
+          ],
+        };
     }
 
-    this.sendNotification(message);
+    this.sendStructuredNotification(markdownInfo, payload);
 
     return {
       success: true,
@@ -379,6 +361,17 @@ ${release.body ? '发布说明：\n' + release.body.substring(0, 200) + (release
   ): void {
     // 使用 void 操作符忽略 Promise
     void this.pushService.sendMarkdownMessage(message, 'repo');
+  }
+
+  /**
+   * 发送结构化 Markdown 通知消息
+   */
+  private sendStructuredNotification(
+    markdownInfo: WxwMarkdownInfo,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    _payload?: GitHubWebhookPayload,
+  ): void {
+    void this.pushService.sendMarkdownInfoMessage(markdownInfo, 'repo');
   }
 
   /**

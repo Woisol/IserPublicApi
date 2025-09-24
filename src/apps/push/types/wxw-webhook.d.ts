@@ -5,6 +5,20 @@
 
 import { WxwMessageType, WxwTemplateCardType } from './wxw-webhook.runtime';
 
+// export type WxwMarkdownInfoContent<T = WxwMarkdownInfoContent> = {
+//   [key: string]: T<string>;
+// };
+
+export type WxwMarkdownInfoContent = {
+  [key: string]: string | { [key: string]: string };
+}[];
+
+export interface WxwMarkdownInfo {
+  type?: string;
+  title: string;
+  content: WxwMarkdownInfoContent;
+}
+
 // 基础消息结构
 export interface WxwBaseMessage {
   msgtype: WxwMessageType;
@@ -309,6 +323,7 @@ export interface WxwMentionUser {
 export type WxwMessageBuilder = {
   text: (content: string, mentions?: WxwMentionUser[]) => WxwTextMessage;
   markdown: (content: string) => WxwMarkdownMessage;
+  markdownInfo: (info: WxwMarkdownInfo) => WxwMarkdownMessage;
   image: (base64: string, md5: string) => WxwImageMessage;
   news: (articles: WxwNewsArticle[]) => WxwNewsMessage;
   file: (mediaId: string) => WxwFileMessage;

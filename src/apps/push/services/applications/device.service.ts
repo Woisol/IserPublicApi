@@ -4,6 +4,7 @@
  */
 import { Injectable, Logger } from '@nestjs/common';
 import { PushService } from '..';
+import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import * as os from 'os';
 
 export interface DeviceMonitorConfig {
@@ -209,18 +210,25 @@ export class DeviceMonitorService {
         .reduce((sum, record) => sum + record.usage, 0) /
       this.config.consecutiveCount;
 
-    const message = `「Device」<font color="warning">CPU 高负荷告警</font>
-> <font color="comment">过去 1.5min 内平均使用率：</font>${avgUsage.toFixed(2)}%
-> <font color="comment">检测时间：</font>${new Date().toLocaleString('zh-CN')}
+    const markdownInfo: WxwMarkdownInfo = {
+      type: 'Device',
+      title: '<font color="warning">CPU 高负荷告警</font>',
+      content: [
+        { 过去15min内平均使用率: `${avgUsage.toFixed(2)}%` },
+        { 检测时间: new Date().toLocaleString('zh-CN') },
+        {
+          系统信息: {
+            内存使用率: `${systemInfo.memoryUsage.toFixed(2)}%`,
+            已运行时间: systemInfo.uptime,
+            系统: systemInfo.platform,
+            CPU: systemInfo.cpuModel,
+            核心数: systemInfo.cpuCount.toString(),
+          },
+        },
+      ],
+    };
 
-**系统信息**
-> <font color="comment">内存使用率：</font>${systemInfo.memoryUsage.toFixed(2)}%
-> <font color="comment">以运行时间：</font>${systemInfo.uptime}`;
-    // > <font color="comment">系统：</font>${systemInfo.platform}
-    // > <font color="comment">CPU：</font>${systemInfo.cpuModel}
-    // > <font color="comment">核心数：</font>${systemInfo.cpuCount}
-
-    this.sendNotification(message);
+    this.sendStructuredNotification(markdownInfo);
   }
 
   /**
@@ -304,10 +312,20 @@ export class DeviceMonitorService {
    * 发送通知消息
    */
   private sendNotification(message: string): void {
-    this.logger.log(`发送设备监控通知: ${message.substring(0, 100)}...`);
+    // this.logger.log(`发送设备监控通知: ${message.substring(0, 100)}...`);
 
     // 使用 void 操作符忽略 Promise
     void this.pushService.sendMarkdownMessage(message, 'monitor');
+  }
+
+  /**
+   * 发送结构化 Markdown 通知消息
+   */
+  private sendStructuredNotification(markdownInfo: WxwMarkdownInfo): void {
+    // this.logger.log(`发送结构化设备监控通知: ${markdownInfo.title}`);
+
+    // 使用 void 操作符忽略 Promise
+    void this.pushService.sendMarkdownInfoMessage(markdownInfo, 'monitor');
   }
 
   //   /**

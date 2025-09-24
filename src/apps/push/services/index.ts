@@ -9,6 +9,7 @@ import type {
   WxwTemplateCard,
   WxwTextNoticeCard,
   WxwNewsNoticeCard,
+  WxwMarkdownInfo,
 } from '@app/apps/push/types/wxw-webhook';
 import {
   WxwErrorCode,
@@ -246,6 +247,18 @@ export class PushService {
     channel = 'general',
   ): Promise<WxwWebhookResponse> {
     const message = this.builder.markdown(content);
+    return this._sendMessage(message, channel);
+  }
+
+  /**
+   * 发送结构化Markdown消息的便捷方法
+   * @param markdownInfo 结构化的Markdown信息对象
+   */
+  async sendMarkdownInfoMessage(
+    markdownInfo: WxwMarkdownInfo,
+    channel = 'general',
+  ): Promise<WxwWebhookResponse> {
+    const message = this.builder.markdownInfo(markdownInfo);
     return this._sendMessage(message, channel);
   }
 
