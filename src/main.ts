@@ -1,9 +1,9 @@
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { loadEnvFile } from 'process';
-import { readFileSync } from 'fs';
+import { existsSync } from 'fs';
 
-if (readFileSync('.env', 'utf-8')) {
+if (existsSync('.env')) {
   loadEnvFile('.env');
 }
 async function bootstrap() {
