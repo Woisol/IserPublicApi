@@ -51,5 +51,8 @@ jobs:
           SERVER_PORT: 6990
           AUTHORITY_API_KEY: ${{ secrets.AUTHORITY_API_KEY }}
           WXWORK_WEBHOOK_URL: https://qyapi.weixin.qq.com/cgi-bin/webhook/send
+          QWEATHER_LOCATION: ${{ secrets.QWEATHER_LOCATION }}
+          QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
+          QWEATHER_API_HOST: ${{ secrets.QWEATHER_API_HOST }}
       - name: Clean up
         run: rm -rf node_modules

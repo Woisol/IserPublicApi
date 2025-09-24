@@ -301,7 +301,6 @@ export class PushApplicationsRepoService {
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },
-          `⚠️ <font color="warning">请及时检查并修复问题</font>`,
         ],
       };
     } else if (conclusion === 'failure') {
@@ -312,6 +311,7 @@ export class PushApplicationsRepoService {
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },
+          `⚠️ <font color="warning">请及时检查并修复问题</font>`,
         ],
       };
     }
