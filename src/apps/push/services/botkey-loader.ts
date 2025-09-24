@@ -15,13 +15,13 @@ export class BotKeyLoader {
 
   constructor() {
     this.configPath = path.join(process.cwd(), 'bot-key.json');
-    this.loadBotKeys();
+    this._loadBotKeys();
   }
 
   /**
    * 加载 bot-key.json 配置文件
    */
-  private loadBotKeys(): void {
+  private _loadBotKeys(): void {
     try {
       const configData = fs.readFileSync(this.configPath, 'utf-8');
       this.botKeys = JSON.parse(configData) as BotKeyConfig;
@@ -34,7 +34,7 @@ export class BotKeyLoader {
         this.logger.warn('bot-key.json not found, creating default config');
 
         const defaultConfig: BotKeyConfig = {
-          general: 'key=your-webhook-key-here',
+          general: '',
         };
 
         try {
@@ -66,6 +66,7 @@ export class BotKeyLoader {
    * @returns 对应的 bot key 或 null
    */
   private _getBotKey(channel: string): string | null {
+    this._loadBotKeys();
     const key = this.botKeys[channel];
     if (!key) {
       this.logger.warn(`No key found for channel: ${channel}`);
