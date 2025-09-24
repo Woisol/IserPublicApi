@@ -23,9 +23,12 @@ jobs:
       - name: Build project
         run: pnpm run build
 
+      - name: move product
+        run: cp -r ./dist ~/servers/iser-public-api/
+
       - name: Deploy project
         run: |
-          pm2 startOrRestart dist/main.js --name IserPublicApi
+          pm2 startOrRestart ~/servers/iser-public-api/main.js --name IserPublicApi
         env:
           SERVER_PORT: 6990
           AUTHORITY_API_KEY: ${{ secrets.AUTHORITY_API_KEY }}
