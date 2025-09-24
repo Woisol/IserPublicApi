@@ -21,6 +21,7 @@ jobs:
 
       - name: Install dependencies
         run: pnpm install
+        # --no-frozen-lockfile 默认配置
 
       - name: Build project
         run: pnpm run build
@@ -30,6 +31,7 @@ jobs:
 
       - name: Move product
         run: |
+          mkdir -p ${{ env.SERVER_LOCAL_PATH }}/logs
           cp -r ./dist/* ${{ env.SERVER_LOCAL_PATH }}/
           cp ./package.json ${{ env.SERVER_LOCAL_PATH }}/
           cp ./ecosystem.config.js ${{ env.SERVER_LOCAL_PATH }}/
@@ -40,9 +42,11 @@ jobs:
 
       - name: Deploy project
         run: |
-          pm2 start ${{ env.SERVER_LOCAL_PATH }}/main.js --env production
-      # cd ${{ env.SERVER_LOCAL_PATH }}
-      # pm2 reload ecosystem.config.js --env production || pm2 start ecosystem.config.js --env production
+          cd ${{ env.SERVER_LOCAL_PATH }}
+          pm2 start ecosystem.config.js --env production
+        # pm2 start ${{ env.SERVER_LOCAL_PATH }}/main.js --env production # 这个也可行
+        # startOrRestart 导致 config undefined
+        # pm2 startOrRestart ${{ env.SERVER_LOCAL_PATH }}/main.js --env production
         env:
           SERVER_PORT: 6990
           AUTHORITY_API_KEY: ${{ secrets.AUTHORITY_API_KEY }}

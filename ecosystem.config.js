@@ -1,9 +1,11 @@
 module.exports = {
   apps: [{
     name: 'IserPublicApi',
-    script: 'main.js',
-    cwd: process.env.SERVER_LOCAL_PATH || '~/servers/iser-public-api',
+    script: './main.js',
     env: {
+      NODE_ENV: 'development'
+    },
+    env_production: {
       NODE_ENV: 'production',
       SERVER_PORT: process.env.SERVER_PORT || 3000,
       AUTHORITY_API_KEY: process.env.AUTHORITY_API_KEY,
@@ -16,6 +18,7 @@ module.exports = {
     error_file: './logs/err.log',
     out_file: './logs/out.log',
     log_file: './logs/combined.log',
-    time: true
+    time: true,
+    log_date_format: 'YYYY-MM-DD HH:mm Z'
   }]
 };
