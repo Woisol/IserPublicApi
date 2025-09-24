@@ -5,6 +5,10 @@ import type {
   WxwMentionUser,
   WxwNewsArticle,
   WxwWebhookResponse,
+  WxwTemplateCardMessage,
+  WxwTemplateCard,
+  WxwTextNoticeCard,
+  WxwNewsNoticeCard,
 } from '@app/apps/push/types/wxw-webhook';
 import {
   WxwErrorCode,
@@ -254,6 +258,28 @@ export class PushService {
     channel = 'general',
   ): Promise<WxwWebhookResponse> {
     const message = this.builder.news(articles);
+    return this._sendMessage(message, channel);
+  }
+
+  /**
+   * 模板文本通知卡片
+   */
+  async sendTemplateTextNoticeCardMessage(
+    card: WxwTextNoticeCard,
+    channel = 'general',
+  ): Promise<WxwWebhookResponse> {
+    const message = this.builder.templateCard(card);
+    return this._sendMessage(message, channel);
+  }
+
+  /**
+   * 模板图文展示卡片
+   */
+  async sendTemplateNewsNoticeCardMessage(
+    card: WxwNewsNoticeCard,
+    channel = 'general',
+  ): Promise<WxwWebhookResponse> {
+    const message = this.builder.templateCard(card);
     return this._sendMessage(message, channel);
   }
 
