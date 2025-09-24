@@ -45,10 +45,10 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   }
 
   /**
-   * 每半小时执行一次分钟级降水检查
+   * 每半个整点执行分钟级降水检查
    * 检查未来1小时是否会下雨
    */
-  @Cron('0 */30 * * * *' as any) // 每30分钟执行一次
+  @Cron('0 0,30 * * * *' as any) // 每小时的0分和30分执行
   async checkMinutelyRain() {
     if (!this.config.apiKey) {
       return;
