@@ -2,10 +2,11 @@
  * 设备监控服务 - 监控本机系统资源使用情况
  * 当 CPU 连续高负荷时发送告警消息
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { PushService } from '..';
 import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import * as os from 'os';
+import { CompactLogger } from '@app/common/utils/logger';
 
 export interface DeviceMonitorConfig {
   /** CPU 使用率阈值（百分比） */
@@ -47,7 +48,7 @@ export interface SystemInfo {
 @Injectable()
 export class DeviceMonitorService {
   /** 与设备监控相关的逻辑 */
-  private readonly logger = new Logger(DeviceMonitorService.name);
+  private readonly logger = new CompactLogger(DeviceMonitorService.name);
   private readonly config: DeviceMonitorConfig;
   private monitorTimer: NodeJS.Timeout | null = null;
   private cpuHistory: CpuUsage[] = [];

@@ -2,7 +2,7 @@
  * webhook 文档 https://docs.github.com/zh/webhooks/webhook-events-and-payloads
  * 微信进企微全员群以后不要退出会导致企微本体也退出()
  */
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import {
   GitHubWebhookPayload,
   MemberWebhookPayload,
@@ -14,11 +14,12 @@ import {
 import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
 import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import { PushService } from '..';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
 export class PushApplicationsRepoService {
   /** 与 GitHub Repo 通知相关的逻辑 */
-  private readonly logger = new Logger(PushApplicationsRepoService.name);
+  private readonly logger = new CompactLogger(PushApplicationsRepoService.name);
   constructor(private readonly pushService: PushService) {}
 
   /**

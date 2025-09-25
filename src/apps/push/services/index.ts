@@ -1,21 +1,17 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { WXWMessageHelper, wxwMessageBuilder } from './wxw-message-helper';
 import type {
   WxwMessage,
   WxwMentionUser,
   WxwNewsArticle,
   WxwWebhookResponse,
-  WxwTemplateCardMessage,
-  WxwTemplateCard,
   WxwTextNoticeCard,
   WxwNewsNoticeCard,
   WxwMarkdownInfo,
 } from '@app/apps/push/types/wxw-webhook';
-import {
-  WxwErrorCode,
-  WxwMessageType,
-} from '@app/apps/push/types/wxw-webhook.runtime';
+import { WxwMessageType } from '@app/apps/push/types/wxw-webhook.runtime';
 import { BotKeyLoader } from './botkey-loader';
+import { CompactLogger } from '@app/common/utils/logger';
 
 // 推送服务配置接口
 export interface PushServiceConfig {
@@ -26,7 +22,7 @@ export interface PushServiceConfig {
 }
 @Injectable()
 export class PushService {
-  private readonly logger = new Logger(PushService.name);
+  private readonly logger = new CompactLogger(PushService.name);
   private readonly builder = wxwMessageBuilder();
   private readonly helper = WXWMessageHelper;
   private readonly config: PushServiceConfig;

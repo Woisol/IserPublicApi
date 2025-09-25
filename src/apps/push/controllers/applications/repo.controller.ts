@@ -1,13 +1,14 @@
-import { Controller, Post, Req, Headers, Body, Logger } from '@nestjs/common';
+import { Controller, Post, Req, Headers, Body } from '@nestjs/common';
 import { type Request } from 'express';
 import { PushService } from '@app/apps/push/services';
 import { PushApplicationsRepoService } from '@app/apps/push/services/applications/repo.service';
 import type { GitHubWebhookPayload } from '@app/apps/push/types/applications/repo.d';
 import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Controller('push')
 export class ApplicationsRepoController {
-  private readonly logger = new Logger(ApplicationsRepoController.name);
+  private readonly logger = new CompactLogger(ApplicationsRepoController.name);
 
   constructor(
     private readonly pushService: PushService,

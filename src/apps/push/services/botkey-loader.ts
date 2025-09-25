@@ -1,4 +1,5 @@
-import { Injectable, Logger } from '@nestjs/common';
+import { CompactLogger } from '@app/common/utils/logger';
+import { Injectable } from '@nestjs/common';
 import * as fs from 'fs';
 import * as path from 'path';
 
@@ -9,7 +10,7 @@ export interface BotKeyConfig {
 
 @Injectable()
 export class BotKeyLoader {
-  private readonly logger = new Logger(BotKeyLoader.name);
+  private readonly logger = new CompactLogger(BotKeyLoader.name);
   private botKeys: BotKeyConfig = {};
   private readonly configPath: string;
 

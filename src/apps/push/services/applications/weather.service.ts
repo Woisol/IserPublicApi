@@ -15,11 +15,14 @@ import type {
 } from '../../types/applications/weather.d';
 import { PushService } from '..';
 import { WeatherAlertType } from '../../types/applications/weather.runtime';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
 export class PushApplicationsWeatherService implements OnModuleInit {
   /** 天气监控服务 */
-  private readonly logger = new Logger(PushApplicationsWeatherService.name);
+  private readonly logger = new CompactLogger(
+    PushApplicationsWeatherService.name,
+  );
 
   // 默认配置
   private readonly config: WeatherMonitorConfig = {

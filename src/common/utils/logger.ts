@@ -43,17 +43,37 @@ export class CompactLogger extends ConsoleLogger {
   }
 
   /**
+   * 格式化参数为字符串
+   */
+  private formatArgs(args: any[]): string {
+    return args
+      .map((arg) => {
+        if (typeof arg === 'string') {
+          return arg;
+        } else if (typeof arg === 'object' && arg !== null) {
+          try {
+            return JSON.stringify(arg, null, 2);
+          } catch {
+            return String(arg);
+          }
+        } else {
+          return String(arg);
+        }
+      })
+      .join(' ');
+  }
+
+  /**
    * 格式化日志消息
    * 格式：Level[context](yyyy-MM-dd)：message
    */
   protected formatMessage(
     level: string,
     message: string,
-    context?: string,
     levelColor?: string,
   ): string {
     const date = this.formatDate(new Date());
-    const contextStr = context || this.context || 'Application';
+    const contextStr = this.context || 'Application';
 
     // 如果指定了颜色，为 level 添加颜色
     const coloredLevel = levelColor ? this.colorize(level, levelColor) : level;
@@ -61,54 +81,46 @@ export class CompactLogger extends ConsoleLogger {
     return `${coloredLevel}[${this.colorize(contextStr, this.colors.cyan)}](${this.colorize(date, this.colors.gray)})：${message}`;
   }
 
-  info(message: string, context?: string) {
+  info(...messages: any[]) {
     const formattedMessage = this.formatMessage(
       'INFO',
-      message,
-      context,
+      this.formatArgs(messages),
       this.colors.green,
     );
     console.log(formattedMessage);
   }
 
-  error(message: string, trace?: string, context?: string) {
+  error(...messages: any[]) {
     const formattedMessage = this.formatMessage(
-      'ERRO',
-      message,
-      context,
+      'ERROR',
+      this.formatArgs(messages),
       this.colors.red,
     );
     console.error(formattedMessage);
-    if (trace) {
-      console.error(trace);
-    }
   }
 
-  warn(message: string, context?: string) {
+  warn(...messages: any[]) {
     const formattedMessage = this.formatMessage(
       'WARN',
-      message,
-      context,
+      this.formatArgs(messages),
       this.colors.yellow,
     );
     console.warn(formattedMessage);
   }
 
-  debug(message: string, context?: string) {
+  debug(...messages: any[]) {
     const formattedMessage = this.formatMessage(
       'DEBUG',
-      message,
-      context,
+      this.formatArgs(messages),
       this.colors.blue,
     );
     console.debug(formattedMessage);
   }
 
-  verbose(message: string, context?: string) {
+  verbose(...messages: any[]) {
     const formattedMessage = this.formatMessage(
       'VERBOSE',
-      message,
-      context,
+      this.formatArgs(messages),
       this.colors.magenta,
     );
     console.log(formattedMessage);
