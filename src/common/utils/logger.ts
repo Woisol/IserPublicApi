@@ -24,16 +24,6 @@ export class CompactLogger extends ConsoleLogger {
   }
 
   /**
-   * 格式化日期为 yyyy-MM-dd 格式
-   */
-  private formatDate(date: Date): string {
-    const year = date.getFullYear();
-    const month = String(date.getMonth() + 1).padStart(2, '0');
-    const day = String(date.getDate()).padStart(2, '0');
-    return `${year}-${month}-${day}`;
-  }
-
-  /**
    * 为文本添加颜色
    * 类“LoggerService”错误扩展基类“ConsoleLogger”。
   属性“colorize”在类型“LoggerService”中是私有属性，但在类型“ConsoleLogger”中不是。
@@ -72,13 +62,17 @@ export class CompactLogger extends ConsoleLogger {
     message: string,
     levelColor?: string,
   ): string {
-    const date = this.formatDate(new Date());
     const contextStr = this.context || 'Application';
 
     // 如果指定了颜色，为 level 添加颜色
     const coloredLevel = levelColor ? this.colorize(level, levelColor) : level;
 
-    return `${coloredLevel}[${this.colorize(contextStr, this.colors.cyan)}](${this.colorize(date, this.colors.gray)})：${message}`;
+    return `${coloredLevel}[${this.colorize(contextStr, this.colors.cyan)}]：${message}`;
+  }
+
+  // 兼容 log
+  log(...messages: any[]) {
+    this.info(...messages);
   }
 
   info(...messages: any[]) {
