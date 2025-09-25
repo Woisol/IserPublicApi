@@ -4,7 +4,7 @@
  * - 每半小时检查分钟级降水预报，如果1小时后要下雨则预警
  * - 每天早上8点检查全天降雨情况，如果下雨则预警
  */
-import { Injectable, Logger, OnModuleInit } from '@nestjs/common';
+import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import type {
   MinutelyPrecipitationResponse,
@@ -14,7 +14,6 @@ import type {
   WeatherAlertResult,
 } from '../../types/applications/weather.d';
 import { PushService } from '..';
-import { WeatherAlertType } from '../../types/applications/weather.runtime';
 import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
@@ -51,7 +50,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
    * 每半个整点执行分钟级降水检查
    * 检查未来1小时是否会下雨
    */
-  @Cron('0 0,30 * * * *' as any) // 每小时的0分和30分执行
+  @Cron('0 0,30 * * * *') // 每小时的0分和30分执行
   async checkMinutelyRain() {
     if (!this.config.apiKey) {
       return;
@@ -74,7 +73,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   /**
    * 每天早上8点检查全天降雨情况
    */
-  @Cron('0 0 8 * * *' as any) // 每天早上8点
+  @Cron('0 0 8 * * *') // 每天早上8点
   async checkDailyRain() {
     if (!this.config.apiKey) {
       return;
@@ -104,7 +103,6 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       if (!response || !response.minutely) {
         return {
           shouldAlert: false,
-          alertType: WeatherAlertType.MINUTELY_RAIN,
         };
       }
 
@@ -121,7 +119,6 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       if (rainPoints.length === 0) {
         return {
           shouldAlert: false,
-          alertType: WeatherAlertType.MINUTELY_RAIN,
         };
       }
 
@@ -131,23 +128,40 @@ export class PushApplicationsWeatherService implements OnModuleInit {
         (firstRainTime.getTime() - now.getTime()) / (1000 * 60),
       );
 
-      // 计算平均降雨概率（这里用降水量作为参考）
+      // 基于降水量计算降雨概率
+      // 使用更科学的方法：考虑降水强度分布和时间点数量
+      const precipValues = rainPoints.map((item) => parseFloat(item.precip));
+      const maxPrecip = Math.max(...precipValues);
       const avgPrecip =
-        rainPoints.reduce((sum, item) => sum + parseFloat(item.precip), 0) /
-        rainPoints.length;
-      const probability = Math.min(Math.round(avgPrecip * 10), 100); // 简化的概率计算
+        precipValues.reduce((sum, val) => sum + val, 0) / precipValues.length;
 
-      const message = `「Weather」⚠️ ${minutesUntilRain}min 后降雨概率 ${probability}%`;
+      // 降水概率计算公式：
+      // 1. 基础概率 = 有降水时间点数 / 总检查时间点数 * 100
+      // 2. 强度修正 = 基于平均降水量的对数函数
+      // 3. 峰值修正 = 考虑最大降水强度
+      const baseProbability = (rainPoints.length / 12) * 100; // 12个5分钟时间点 = 1小时
+      const intensityFactor = Math.min(
+        1 + Math.log10(avgPrecip + 0.1) * 0.3,
+        2,
+      ); // 强度因子
+      const peakFactor = maxPrecip > 1 ? 1.2 : 1; // 峰值因子：如果有时间点降水量>1mm则提升20%
+
+      const probability = Math.min(
+        Math.round(baseProbability * intensityFactor * peakFactor),
+        100,
+      );
+
+      const message = `「Weather」⚠️ ${minutesUntilRain}min 后降雨概率 ${probability}%
+预报降水量：[${rainPoints.map((p) => `${p.precip}mm`).join(', ')}]`;
 
       return {
         shouldAlert: probability >= 50,
-        alertType: WeatherAlertType.MINUTELY_RAIN,
         message,
         time: firstRainTime,
       };
     } catch (error) {
       this.logger.error('Error checking minutely rain forecast:', error);
-      return { shouldAlert: false, alertType: WeatherAlertType.MINUTELY_RAIN };
+      return { shouldAlert: false };
     }
   }
 
@@ -160,7 +174,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       const response = await this.fetchHourlyWeather('24h');
 
       if (!response || !response.hourly) {
-        return { shouldAlert: false, alertType: WeatherAlertType.DAILY_RAIN };
+        return { shouldAlert: false };
       }
 
       // 筛选出今天会下雨的时间段
@@ -179,7 +193,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       });
 
       if (rainHours.length === 0) {
-        return { shouldAlert: false, alertType: WeatherAlertType.DAILY_RAIN };
+        return { shouldAlert: false };
       }
 
       // 构建降雨时间段描述
@@ -202,13 +216,12 @@ export class PushApplicationsWeatherService implements OnModuleInit {
 
       return {
         shouldAlert: true,
-        alertType: WeatherAlertType.DAILY_RAIN,
         message,
         time: new Date(rainHours[0].fxTime),
       };
     } catch (error) {
       this.logger.error('Error checking daily rain forecast:', error);
-      return { shouldAlert: false, alertType: WeatherAlertType.DAILY_RAIN };
+      return { shouldAlert: false };
     }
   }
 

@@ -62,7 +62,6 @@ export interface WeatherMonitorConfig {
 
 export interface WeatherAlertResult {
   shouldAlert: boolean;
-  alertType: WeatherAlertType;
   message?: string;
   time?: Date;
 }
