@@ -36,6 +36,6 @@ export class AppModule implements NestModule {
     consumer
       .apply(AuthorityApiKeyMiddleware)
       .exclude('push/repo')
-      .forRoutes('push/*');
+      .forRoutes('push/*path');
   }
 }

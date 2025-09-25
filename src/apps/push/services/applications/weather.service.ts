@@ -58,6 +58,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       this.logger.log('Checking minutely rain forecast...');
 
       const result = await this.checkMinutelyRainForecast();
+      this.logger.info('Minutely rain forecast result:', result);
       if (result.shouldAlert && result.message) {
         await this.sendRainAlert(result.message);
         this.logger.log(`Minutely rain alert sent: ${result.message}`);
