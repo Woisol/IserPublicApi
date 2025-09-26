@@ -57,7 +57,7 @@ export class DeviceMonitorService {
 
   constructor(private readonly pushService: PushService) {
     this.config = {
-      cpuThreshold: 80, // 80% CPU 使用率阈值
+      cpuThreshold: 20, // CPU 使用率阈值
       consecutiveCount: 3, // 连续3次检测到高负荷
       monitorInterval: 30000, // 30秒检测一次
       enabled: false, // 默认不启用

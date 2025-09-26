@@ -299,6 +299,7 @@ export class PushApplicationsRepoService {
         type: 'Workflow',
         title: `✅ [${workflow_run.name} ](${workflowUrl}) 执行成功`,
         content: [
+          { 提交: `[\`${workflow_run.head_commit.message}\`]` },
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },
@@ -309,6 +310,7 @@ export class PushApplicationsRepoService {
         type: 'Workflow',
         title: `❌ [${workflow_run.name}](${workflowUrl}) 执行失败`,
         content: [
+          { 提交: `[\`${workflow_run.head_commit.message}\`]` },
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },

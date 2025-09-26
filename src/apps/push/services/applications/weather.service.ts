@@ -57,7 +57,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
     }
 
     try {
-      this.logger.log('Checking minutely rain forecast...');
+      // this.logger.log('Checking minutely rain forecast...');
 
       const result = await this.checkMinutelyRainForecast();
       this.logger.info('Minutely rain forecast result:', result);
@@ -80,7 +80,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
     }
 
     try {
-      this.logger.log('Checking daily rain forecast...');
+      // this.logger.log('Checking daily rain forecast...');
 
       const result = await this.checkDailyRainForecast();
       if (result.shouldAlert && result.message) {

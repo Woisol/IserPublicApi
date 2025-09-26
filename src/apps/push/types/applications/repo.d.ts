@@ -19,6 +19,21 @@ export interface GitHubRepository {
   owner: GitHubUser;
 }
 
+export interface GitHubCommit {
+  id: string;
+  tree_id: string;
+  message: string;
+  timestamp: string;
+  author: {
+    name: string;
+    email: string;
+  };
+  committer: {
+    name: string;
+    email: string;
+  };
+}
+
 // Webhook 基础结构
 export interface GitHubWebhookBase {
   action?: string;
@@ -121,19 +136,28 @@ export interface ReleaseWebhookPayload extends GitHubWebhookBase {
 // 4. Workflow 运行事件 (workflow_run)
 export interface GitHubWorkflow {
   id: number;
+  node_id: string;
   name: string;
   path: string;
   state: string;
   created_at: string;
   updated_at: string;
   html_url: string;
+  badge_url: string;
 }
 
 export interface GitHubWorkflowRun {
   id: number;
   name: string;
+  node_id: string;
+  check_suite_id: number;
+  check_suite_node_id: string;
   head_branch: string;
   head_sha: string;
+  path: string;
+  display_title: string;
+  run_number: number;
+  run_attempt: number;
   status: 'queued' | 'in_progress' | 'completed';
   conclusion:
     | 'success'
@@ -147,12 +171,37 @@ export interface GitHubWorkflowRun {
   workflow_id: number;
   url: string;
   html_url: string;
+  jobs_url: string;
+  logs_url: string;
+  check_suite_url: string;
+  artifacts_url: string;
+  cancel_url: string;
+  rerun_url: string;
+  previous_attempt_url?: string;
+  workflow_url: string;
   created_at: string;
   updated_at: string;
-  run_attempt: number;
   run_started_at: string;
   event: string;
   actor: GitHubUser;
+  head_commit: GitHubCommit;
+  repository: GitHubRepository;
+  head_repository: GitHubRepository | null;
+  pull_requests: Array<{
+    id: number;
+    number: number;
+    url: string;
+    head: {
+      ref: string;
+      sha: string;
+      repo: GitHubRepository;
+    };
+    base: {
+      ref: string;
+      sha: string;
+      repo: GitHubRepository;
+    };
+  }>;
 }
 
 export interface WorkflowRunWebhookPayload extends GitHubWebhookBase {
