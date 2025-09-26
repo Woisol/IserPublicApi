@@ -261,6 +261,9 @@ export class PushService {
   /**
    * 发送图文消息的便捷方法
    * @param articles 图文消息文章列表
+   * @example 部分使用实例：curl.exe -H "authority-api-key: a74a44d48d473cf4b72ca4ee6f2df918" "http://localhost:6990/push/general/pt?title=Title&description=Desc&url=https%3a%2f%2fdeveloper.work.weixin.qq.com%2fdocument%2fpath%2f99110&picurl=https%3a%2f%2fdocs.nestjs.cn%2frspress-light-logo.png"
+   * @example 传不聊 base64：news.articles.picurl exceed max length 2083
+   * notice: url 必需且非空，否则报错 invalid url size 且官网文档只说过长（）
    */
   async sendNewsMessage(
     articles: WxwNewsArticle[],

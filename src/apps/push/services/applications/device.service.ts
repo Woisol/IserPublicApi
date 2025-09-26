@@ -113,7 +113,7 @@ export class DeviceMonitorService {
     try {
       const cpuUsage = await this.getCurrentCpuUsage();
       const timestamp = Date.now();
-      this.logger.log('CPU usage', cpuUsage);
+      if (cpuUsage > 50) this.logger.warn('CPU usage over 50%:', cpuUsage);
 
       this.cpuHistory.push({ usage: cpuUsage, timestamp });
 
@@ -121,8 +121,6 @@ export class DeviceMonitorService {
       if (this.cpuHistory.length > this.config.consecutiveCount) {
         this.cpuHistory.shift();
       }
-
-      // this.logger.debug(`当前 CPU 使用率: ${cpuUsage.toFixed(2)}%`);
 
       // 检查是否触发告警
       this.checkForAlert(cpuUsage);
