@@ -57,7 +57,7 @@ export class DeviceMonitorService {
 
   constructor(private readonly pushService: PushService) {
     this.config = {
-      cpuThreshold: 20, // CPU 使用率阈值
+      cpuThreshold: 80, // CPU 使用率阈值
       consecutiveCount: 3, // 连续3次检测到高负荷
       monitorInterval: 30000, // 30秒检测一次
       enabled: false, // 默认不启用
@@ -113,6 +113,7 @@ export class DeviceMonitorService {
     try {
       const cpuUsage = await this.getCurrentCpuUsage();
       const timestamp = Date.now();
+      this.logger.log('CPU usage', cpuUsage);
 
       this.cpuHistory.push({ usage: cpuUsage, timestamp });
 

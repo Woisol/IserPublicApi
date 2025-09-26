@@ -151,7 +151,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
         100,
       );
 
-      const message = `「Weather」⚠️ ${minutesUntilRain}min 后降雨概率 ${probability}%
+      const message = `⚠️ ${minutesUntilRain}min 后降雨概率 ${probability}%
 预报降水量：[${rainPoints.map((p) => `${p.precip}mm`).join(', ')}]`;
 
       return {
@@ -212,7 +212,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
         })
         .join('、');
 
-      const message = `「Weather」⚠️ 今天${timeDescription}可能下雨`;
+      const message = `⚠️ 今天${timeDescription}可能下雨`;
 
       return {
         shouldAlert: true,

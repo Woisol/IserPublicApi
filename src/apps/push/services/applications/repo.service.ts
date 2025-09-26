@@ -15,6 +15,7 @@ import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
 import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import { PushService } from '..';
 import { CompactLogger } from '@app/common/utils/logger';
+import { shorttenGitMessage } from './utils/repo';
 
 @Injectable()
 export class PushApplicationsRepoService {
@@ -280,6 +281,8 @@ export class PushApplicationsRepoService {
     const workflowUrl = workflow_run.html_url;
     const conclusion = workflow_run.conclusion;
 
+    const commitMessage = shorttenGitMessage(workflow_run.head_commit.message);
+
     const duration =
       workflow_run.run_started_at && workflow_run.updated_at
         ? Math.round(
@@ -299,7 +302,7 @@ export class PushApplicationsRepoService {
         type: 'Workflow',
         title: `✅ [${workflow_run.name} ](${workflowUrl}) 执行成功`,
         content: [
-          { 提交: `[\`${workflow_run.head_commit.message}\`]` },
+          { 提交: commitMessage },
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },
@@ -310,7 +313,7 @@ export class PushApplicationsRepoService {
         type: 'Workflow',
         title: `❌ [${workflow_run.name}](${workflowUrl}) 执行失败`,
         content: [
-          { 提交: `[\`${workflow_run.head_commit.message}\`]` },
+          { 提交: commitMessage },
           { 仓库: `[${repository.name}](${repository.html_url})` },
           { 分支: `\`${workflow_run.head_branch}\`` },
           { 执行时长: durationText },
