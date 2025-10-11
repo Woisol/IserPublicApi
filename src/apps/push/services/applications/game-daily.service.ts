@@ -11,7 +11,10 @@ import {
   GameLogFetchRawOption,
   GameLogFetchResult,
 } from '../../types/applications/game-daily';
-import { factoryGameLogURL, gameName2GameChannel } from './utils/game-daily';
+import {
+  findGameLogFetchConfig,
+  gameName2GameChannel,
+} from './utils/game-daily';
 import { WxwMarkdownInfo } from '../../types/wxw-webhook';
 
 /**
@@ -27,48 +30,39 @@ export class PushApplicationsGameDailyService {
   private readonly logger = new CompactLogger(
     PushApplicationsGameDailyService.name,
   );
+  // 先硬编码了，@todo 使用配置文件
   private GAMELOGFETCH: GameLogFetchRawOption[] = [
     {
       gameName: 'Genshin',
-      successFlag: '',
+      // 为空将始终成功
+      successFlag: '今日奖励已领取',
       detailQuery: [
         {
           name: '剩余树脂',
           findStr: /(?<=原粹树脂：)\d+/g,
+          index: -1,
         },
         {
           name: '完成时间',
-          findStr: /a/g,
+          findStr: /\d{2}:\d{2}:\d{2}(?=.*\n.*今日奖励已领取)/g,
         },
       ],
     },
     {
       gameName: 'Star Rail',
-      successFlag: '',
+      successFlag: '每日实训已完成',
       detailQuery: [
         {
           name: '剩余开拓力',
-          findStr: /(?<=开拓力剩余：)\d+(?=\/)/g,
+          findStr: /(?<=开拓力剩余)\d+(?=\/)/g,
         },
         {
           name: '完成时间',
-          findStr: /a/g,
+          findStr: /\d{2}:\d{2}:\d{2}(?=.*每日实训已完成)/g,
         },
       ],
     },
   ];
-
-  private _findGameLogFetchConfig(
-    gameName: string,
-    date: Date = new Date(),
-  ): GameLogFetchOption {
-    const _option = this.GAMELOGFETCH.find((g) => g.gameName === gameName);
-    if (!_option) {
-      throw new Error(`未找到游戏 ${gameName} 的日志配置`);
-    }
-    _option['logUrl'] = factoryGameLogURL(gameName, date);
-    return _option as GameLogFetchOption;
-  }
 
   constructor(private readonly pushService: PushService) {}
 
@@ -107,7 +101,7 @@ export class PushApplicationsGameDailyService {
     let message: WxwMarkdownInfo;
 
     try {
-      const game = this._findGameLogFetchConfig(gameName, today);
+      const game = findGameLogFetchConfig(this.GAMELOGFETCH, gameName, today);
       const logRes: GameLogFetchResult = await this._fetchGameLog(game);
 
       if (!logRes.querySuccess) {
@@ -157,7 +151,7 @@ export class PushApplicationsGameDailyService {
     });
     if (!_res.ok) {
       this.logger.error(
-        `Fetch game log failed: ${_res.status} ${_res.statusText}`,
+        `无法获取 ${gameName} 的日志：${_res.status} ${_res.statusText}`,
       );
       return {
         querySuccess: false,
@@ -168,9 +162,12 @@ export class PushApplicationsGameDailyService {
     const logContent = await _res.text();
 
     const successFlag = logContent.includes(_successFlag);
+
     const details = detailQuery.map((query) => {
       const match = logContent.match(query.findStr);
-      return { [query.name]: match ? match[1] : null };
+      const _matchLen = match?.length ?? 0;
+      const index = query.index ? (query.index + _matchLen) % _matchLen : 0;
+      return { [query.name]: _matchLen ? match[index] : '' };
     });
     return {
       querySuccess: !!logContent,

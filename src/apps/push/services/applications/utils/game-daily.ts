@@ -1,4 +1,7 @@
-import { GameLogInfo } from '@app/apps/push/types/applications/game-daily';
+import {
+  GameLogFetchOption,
+  GameLogFetchRawOption,
+} from '@app/apps/push/types/applications/game-daily';
 
 //! 在这里初始化会为空值()
 // const GENSHINLOGSURL: string =
@@ -40,5 +43,18 @@ export function factoryGameLogURL(gameName: string, date: Date): URL {
 }
 
 export function gameName2GameChannel(gameName: string): string {
-  return gameName.toLowerCase().replace(/\s+/g, '-');
+  return gameName.toLowerCase().replace(/\s+/g, '_');
+}
+
+export function findGameLogFetchConfig(
+  GameLogFetch: GameLogFetchRawOption[],
+  gameName: string,
+  date: Date = new Date(),
+): GameLogFetchOption {
+  const _option = GameLogFetch.find((g) => g.gameName === gameName);
+  if (!_option) {
+    throw new Error(`未找到游戏 ${gameName} 的日志配置`);
+  }
+  _option['logUrl'] = factoryGameLogURL(gameName, date);
+  return _option as GameLogFetchOption;
 }
