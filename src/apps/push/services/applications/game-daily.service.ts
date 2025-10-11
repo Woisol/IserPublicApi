@@ -108,7 +108,7 @@ export class PushApplicationsGameDailyService {
           content: [{ 详情: '无法获取日志' }],
         };
         await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
-        return;
+        return message;
       }
 
       message = {
@@ -126,7 +126,7 @@ export class PushApplicationsGameDailyService {
         content: [{ 详情: error.message as string }],
       };
       await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
-      return;
+      return message;
     }
   }
 
