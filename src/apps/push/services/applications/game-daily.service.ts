@@ -16,6 +16,7 @@ import {
   gameName2GameChannel,
 } from './utils/game-daily';
 import { WxwMarkdownInfo } from '../../types/wxw-webhook';
+import { exec } from 'child_process';
 
 /**
  * 自己写就乱（
@@ -83,7 +84,21 @@ export class PushApplicationsGameDailyService {
    * 唤醒电脑，如果失败发送消息
    */
   async wakeUpComputer() {
-    throw new NotImplementedException();
+    exec('~/sh/wake').on('exit', (code) => {
+      if (code === 0) {
+        this.logger.log('已发送唤醒信号');
+        return 'success';
+      } else {
+        this.logger.error(`唤醒失败`);
+        const message: WxwMarkdownInfo = {
+          type: 'Wakeup',
+          title: '❌ 电脑唤醒失败',
+          content: ['⚠️ <font color="warning" > 请及时检查并修复问题 </font>'],
+        };
+        this.pushService.sendMarkdownInfoMessage(message, 'general');
+        return message;
+      }
+    });
   }
 
   /**

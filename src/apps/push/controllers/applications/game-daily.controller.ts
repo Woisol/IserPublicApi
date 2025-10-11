@@ -15,4 +15,9 @@ export class GameDailyController {
   gameDailyCheck(@Query('name') name: string) {
     return this.gameDailyService.processGameDailyCheck(name);
   }
+
+  @Get('/wake')
+  wakeUpComputer() {
+    return this.gameDailyService.wakeUpComputer();
+  }
 }
