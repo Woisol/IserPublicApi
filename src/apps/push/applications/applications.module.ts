@@ -29,4 +29,4 @@ import { PushService } from '../services';
     DeviceMonitorService,
   ],
 })
-export class PushApplicationsModule { }
+export class PushApplicationsModule {}

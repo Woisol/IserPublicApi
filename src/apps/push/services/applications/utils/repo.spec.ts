@@ -1,6 +1,6 @@
 import { shorttenGitMessage } from './repo';
 
-describe('util', () => {
+describe('repo', () => {
   describe('shorttenGitMessage', () => {
     it('should remove emoji codes and extra spaces', () => {
       const input =
