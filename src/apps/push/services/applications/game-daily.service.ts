@@ -84,6 +84,9 @@ export class PushApplicationsGameDailyService {
    * 唤醒电脑，如果失败发送消息
    */
   async wakeUpComputer() {
+    /**
+     * 这里实现你的唤醒逻辑，暂时硬编码，调用本地的 sh 脚本实现
+     */
     exec('~/sh/wake').on('exit', (code) => {
       if (code === 0) {
         this.logger.log('已发送唤醒信号');
@@ -137,6 +140,7 @@ export class PushApplicationsGameDailyService {
       };
       await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
       this.logger.info('已发送每日任务情况通知');
+      return message;
     } catch (error) {
       this.logger.error(error);
       message = {
