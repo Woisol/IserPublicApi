@@ -54,5 +54,8 @@ jobs:
           QWEATHER_LOCATION: ${{ secrets.QWEATHER_LOCATION }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}
           QWEATHER_API_HOST: ${{ secrets.QWEATHER_API_HOST }}
+          GAMELOG_BASEURL: ${{ secrets.GAMELOG_BASEURL }}
+          GAMELOG_GENSHINLOGSURL: ${{ secrets.GAMELOG_GENSHINLOGSURL }}
+          GAMELOG_STARRAILLOGSURL: ${{ secrets.GAMELOG_STARRAILLOGSURL }}
       - name: Clean up
         run: rm -rf node_modules
