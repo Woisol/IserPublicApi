@@ -70,9 +70,9 @@ export class PushApplicationsGameDailyService {
   /**
    * 唤醒与自动任务触发
    */
-  @Cron('10 4 * * *') // 每天4点10分触发
+  @Cron('0 6 * * *') // 每天6点触发
   async processGameDaily() {
-    throw new NotImplementedException();
+    // throw new NotImplementedException();
     this.logger.log(
       '开始唤醒并触发每日任务，游戏列表：' +
         this.GAMELOGFETCH.map((g) => g.gameName).join(', '),
