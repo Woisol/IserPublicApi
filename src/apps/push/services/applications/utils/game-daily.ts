@@ -12,12 +12,25 @@ const STARRAILLOGSURL: string =
     ?.replace(/\/$/, '')
     ?.push('/') || '';
 
-export function factoryGenshinLogURL(date: Date): URL {
-  const logFileName = `better-genshin-impact${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}.log`;
-  return new URL(`${GENSHINLOGSURL}/${logFileName}`, BASELOGURL);
+const gameLogURLMap: Record<string, (date: Date) => URL> = {
+  Genshin: (date: Date): URL => {
+    const logFileName = `better-genshin-impact${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}.log`;
+    return new URL(`${GENSHINLOGSURL}/${logFileName}`, BASELOGURL);
+  },
+  'Star Rail': (date: Date): URL => {
+    const logFileName = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}.log`;
+    return new URL(`${STARRAILLOGSURL}/${logFileName}`, BASELOGURL);
+  },
+};
+
+export function factoryGameLogURL(gameName: string, date: Date): URL {
+  const factory = gameLogURLMap[gameName];
+  if (!factory) {
+    throw new Error(`未找到游戏 ${gameName} 的日志工厂`);
+  }
+  return factory(date);
 }
 
-export function factoryStarrailLogURL(date: Date): URL {
-  const logFileName = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}.log`;
-  return new URL(`${STARRAILLOGSURL}/${logFileName}`, BASELOGURL);
+export function gameName2GameChannel(gameName: string): string {
+  return gameName.toLowerCase().replace(/\s+/g, '-');
 }
