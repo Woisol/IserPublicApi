@@ -1,25 +1,33 @@
 import { GameLogInfo } from '@app/apps/push/types/applications/game-daily';
 
-const BASELOGURL = process.env.GAMELOG_BASEURL || 'http://localhost';
-
-const GENSHINLOGSURL: string =
-  process.env.GAMELOG_GENSHINLOGSURL?.replace(/^\//, '')
-    ?.replace(/\/$/, '')
-    ?.push('/') || '';
-
-const STARRAILLOGSURL: string =
-  process.env.GAMELOG_STARRAILLOGSURL?.replace(/^\//, '')
-    ?.replace(/\/$/, '')
-    ?.push('/') || '';
+//! 在这里初始化会为空值()
+// const GENSHINLOGSURL: string =
+//   process.env.GAMELOG_GENSHINLOGSURL?.replace(/^\//, '')
+//     ?.replace(/\/$/, '')
+//     ?.concat('/') || '';
 
 const gameLogURLMap: Record<string, (date: Date) => URL> = {
   Genshin: (date: Date): URL => {
+    const GENSHINLOGSURL: string =
+      process.env.GAMELOG_GENSHINLOGSURL?.replace(/^\//, '')
+        ?.replace(/\/$/, '')
+        ?.concat('/') || '';
     const logFileName = `better-genshin-impact${date.getFullYear()}${(date.getMonth() + 1).toString().padStart(2, '0')}${date.getDate().toString().padStart(2, '0')}.log`;
-    return new URL(`${GENSHINLOGSURL}/${logFileName}`, BASELOGURL);
+    return new URL(
+      `${GENSHINLOGSURL}/${logFileName}`,
+      process.env.GAMELOG_BASEURL || 'http://localhost',
+    );
   },
   'Star Rail': (date: Date): URL => {
+    const STARRAILLOGSURL: string =
+      process.env.GAMELOG_STARRAILLOGSURL?.replace(/^\//, '')
+        ?.replace(/\/$/, '')
+        .concat('/') || '';
     const logFileName = `${date.getFullYear()}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getDate().toString().padStart(2, '0')}.log`;
-    return new URL(`${STARRAILLOGSURL}/${logFileName}`, BASELOGURL);
+    return new URL(
+      `${STARRAILLOGSURL}/${logFileName}`,
+      process.env.GAMELOG_BASEURL || 'http://localhost',
+    );
   },
 };
 

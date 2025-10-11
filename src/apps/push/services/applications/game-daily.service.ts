@@ -1,4 +1,8 @@
-import { Injectable, NotImplementedException } from '@nestjs/common';
+import {
+  HttpException,
+  Injectable,
+  NotImplementedException,
+} from '@nestjs/common';
 import { PushService } from '..';
 import { CompactLogger } from '@app/common/utils/logger';
 import { Cron } from '@nestjs/schedule';
@@ -72,7 +76,7 @@ export class PushApplicationsGameDailyService {
    * 唤醒与自动任务触发
    */
   @Cron('10 4 * * *') // 每天4点10分触发
-  processGameDaily() {
+  async processGameDaily() {
     throw new NotImplementedException();
     this.logger.log(
       '开始唤醒并触发每日任务，游戏列表：' +
@@ -92,6 +96,11 @@ export class PushApplicationsGameDailyService {
    * 获取特定游戏每日完成情况并发送通知
    */
   async processGameDailyCheck(gameName: string) {
+    if (!gameName) {
+      this.logger.error('缺少名称查询 name');
+      throw new HttpException('缺少名称查询 name', 400);
+    }
+
     const today = new Date();
     const gameChannel = gameName2GameChannel(gameName);
 
@@ -143,14 +152,20 @@ export class PushApplicationsGameDailyService {
     successFlag: _successFlag,
     detailQuery,
   }: GameLogFetchOption): Promise<GameLogFetchResult> {
-    const logContent: string | null = await fetch(logUrl, {
+    const _res: Response = await fetch(logUrl, {
       method: 'GET',
-    })
-      .then((res) => res.text())
-      .catch((err) => {
-        this.logger.error(`Failed to fetch log ${gameName}:`, err);
-        return null;
-      });
+    });
+    if (!_res.ok) {
+      this.logger.error(
+        `Fetch game log failed: ${_res.status} ${_res.statusText}`,
+      );
+      return {
+        querySuccess: false,
+        dailyCompleted: false,
+        details: [],
+      } as GameLogFetchResult;
+    }
+    const logContent = await _res.text();
 
     const successFlag = logContent.includes(_successFlag);
     const details = detailQuery.map((query) => {

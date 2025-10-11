@@ -37,7 +37,8 @@ export function wxwMessageBuilder(): WxwMessageBuilder {
           return;
         }
         const subtitle = Object.keys(value)[0];
-        const content = Object.values(value)[0];
+        // content 为 null 报错
+        const content = Object.values(value)[0] ?? '';
         if (typeof content === 'object') {
           res += `\n\n**${subtitle}**`;
           Object.entries(content).forEach(([key, value]) => {

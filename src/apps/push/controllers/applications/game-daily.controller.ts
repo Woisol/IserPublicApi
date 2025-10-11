@@ -1,8 +1,8 @@
-import { Controller, Get, Param } from '@nestjs/common';
+import { Controller, Get, Param, Query } from '@nestjs/common';
 import { PushApplicationsGameDailyService } from '../../services/applications/game-daily.service';
 
 @Controller('push/game-daily')
-export class PushApplicationsGameDailyController {
+export class GameDailyController {
   // private readonly logger = new CompactLogger(
   //   PushApplicationsGameDailyController.name,
   // );
@@ -12,7 +12,7 @@ export class PushApplicationsGameDailyController {
   ) {}
 
   @Get()
-  gameDailyCheck(@Param('name') name: string) {
+  gameDailyCheck(@Query('name') name: string) {
     return this.gameDailyService.processGameDailyCheck(name);
   }
 }
