@@ -71,19 +71,19 @@ export class PushApplicationsGameDailyService {
    * 唤醒与自动任务触发
    */
   @Cron('0 6 * * *') // 每天6点触发
-  async processGameDaily() {
+  processGameDaily() {
     // throw new NotImplementedException();
     this.logger.log(
       '开始唤醒并触发每日任务，游戏列表：' +
         this.GAMELOGFETCH.map((g) => g.gameName).join(', '),
     );
-    await this.wakeUpComputer();
+    this.wakeUpComputer();
   }
 
   /**
    * 唤醒电脑，如果失败发送消息
    */
-  async wakeUpComputer() {
+  wakeUpComputer() {
     /**
      * 这里实现你的唤醒逻辑，暂时硬编码，调用本地的 sh 脚本实现
      */
@@ -178,9 +178,55 @@ export class PushApplicationsGameDailyService {
         details: [],
       } as GameLogFetchResult;
     }
-    const logContent = await _res.text();
+    let logContent = await _res.text();
 
-    const successFlag = logContent.includes(_successFlag);
+    let successFlag = logContent.includes(_successFlag);
+
+    //! 针对原，处理 BGI 存在多日志的情况
+    if (!successFlag && gameName === 'Genshin') {
+      let hasStart = logContent.includes('任务启动！');
+      if (!hasStart) {
+        let _thisLogName = logUrl.pathname.split('/').slice(-1)[0];
+        this.logger.warn(
+          `${_thisLogName} 不包含本日进度，尝试获取当日其它日志`,
+        );
+        for (let i = 1; i <= 5; i++) {
+          const alterLogUrl: URL = new URL(logUrl);
+          alterLogUrl.pathname = alterLogUrl.pathname.replace(
+            /(?=\.log)/,
+            `_${i.toString().padStart(3, '0')}`,
+          );
+          _thisLogName = alterLogUrl.pathname.split('/').slice(-1)[0];
+
+          const alterRes: Response = await fetch(alterLogUrl, {
+            method: 'GET',
+          });
+          if (!alterRes.ok) {
+            this.logger.warn(
+              `当日不存在其它日志${alterLogUrl}：${alterRes.status} ${alterRes.statusText}`,
+            );
+            break;
+          }
+          const alterLogContent = await alterRes.text();
+          if (!(hasStart = alterLogContent.includes('任务启动！'))) {
+            this.logger.warn(`${_thisLogName} 不包含本日进度，继续尝试`);
+          } else {
+            this.logger.log(`使用日志 ${_thisLogName}`);
+            logContent = alterLogContent;
+            successFlag = logContent.includes(_successFlag);
+            break;
+          }
+        }
+        if (!hasStart) {
+          this.logger.error(`尝试 5 次依然无法获取 ${gameName} 的当日日志`);
+          return {
+            querySuccess: false,
+            dailyCompleted: false,
+            details: [],
+          } as GameLogFetchResult;
+        }
+      }
+    }
 
     const details = detailQuery.map((query) => {
       const match = logContent.match(query.findStr);
