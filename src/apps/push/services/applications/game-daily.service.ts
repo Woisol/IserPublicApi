@@ -68,17 +68,18 @@ export class PushApplicationsGameDailyService {
   constructor(private readonly pushService: PushService) {}
 
   /**
-   * 唤醒与自动任务触发
+   * ~~唤醒与自动任务触发
+   * 不再定时唤醒，可能改为每天检查唤醒功能状态
    */
-  @Cron('0 6 * * *') // 每天6点触发
-  processGameDaily() {
-    // throw new NotImplementedException();
-    this.logger.log(
-      '开始唤醒并触发每日任务，游戏列表：' +
-        this.GAMELOGFETCH.map((g) => g.gameName).join(', '),
-    );
-    this.wakeUpComputer();
-  }
+  // @Cron('0 6 * * *') // 每天6点触发
+  // processGameDaily() {
+  //   // throw new NotImplementedException();
+  //   this.logger.log(
+  //     '开始唤醒并触发每日任务，游戏列表：' +
+  //       this.GAMELOGFETCH.map((g) => g.gameName).join(', '),
+  //   );
+  //   this.wakeUpComputer();
+  // }
 
   /**
    * 唤醒电脑，如果失败发送消息
