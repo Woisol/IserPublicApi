@@ -45,7 +45,11 @@ export class PushApplicationsGameDailyService {
         },
         {
           name: '完成时间',
-          findStr: /\d{2}:\d{2}:\d{2}(?=.*\n.*今日奖励已领取)/g,
+          // findStr: /\d{2}:\d{2}:\d{2}(?=.*\n.*今日奖励已领取)/gm,
+          // findStr: /\d{2}:\d{2}:\d{2}(?=[\s\S]*?今日奖励已领取)/g,
+          //! 使用 \n 在 node 环境下无法匹配，使用 (?<!\d) 前面不是数字来隔断()
+          findStr:
+            /(?<!\d)\d{2}:\d{2}:\d{2}(?=(?:(?!\d{2}:\d{2}:\d{2})[\s\S])*?今日奖励已领取)/,
         },
       ],
     },
