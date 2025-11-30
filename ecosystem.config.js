@@ -1,6 +1,6 @@
 module.exports = {
   apps: [{
-    name: 'IserPublicApi',
+    name: 'ISerPublicApi',
     script: './main.js',
     // env_inherit: true, // 不存在
     env: {
