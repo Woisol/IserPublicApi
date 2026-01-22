@@ -49,6 +49,7 @@ export interface SystemInfo {
 export class DeviceMonitorService {
   /** 与设备监控相关的逻辑 */
   private readonly logger = new CompactLogger(DeviceMonitorService.name);
+  private curSecutiveHighCpuCount = 0;
   private readonly config: DeviceMonitorConfig;
   private monitorTimer: NodeJS.Timeout | null = null;
   private cpuHistory: CpuUsage[] = [];
@@ -56,9 +57,10 @@ export class DeviceMonitorService {
   private readonly alertCooldown = 5 * 60 * 1000; // 5分钟冷却时间
 
   constructor(private readonly pushService: PushService) {
+    const consecutiveCount = 3;
     this.config = {
       cpuThreshold: 80, // CPU 使用率阈值
-      consecutiveCount: 3, // 连续3次检测到高负荷
+      consecutiveCount: consecutiveCount, // 连续3次检测到高负荷
       monitorInterval: 30000, // 30秒检测一次
       enabled: false, // 默认不启用
     };
@@ -109,21 +111,64 @@ export class DeviceMonitorService {
   /**
    * 检测 CPU 使用率
    */
-  private async checkCpuUsage(): Promise<void> {
+  private checkCpuUsage() {
+    this._checkCpuUsageRecursive(0);
+    // const timestamp = Date.now();
+
+    // let curSecutiveHighCpuCount = 0;
+    // if (cpuUsage > 50) {
+    //   this.logger.warn('CPU usage over 50%:', cpuUsage);
+    // dTODO ESLint Promise returned in function argument where a void return was expected
+    // setTimeout(async () => {
+    //   cpuUsage = await this.getCurrentCpuUsage();
+    //   if (cpuUsage > 50) {
+    //     this.logger.warn('CPU usage over 50% again:', cpuUsage);
+    //     curSecutiveHighCpuCount++;
+
+    //     setTimeout(async () => {
+    //       cpuUsage = await this.getCurrentCpuUsage();
+    //       if (cpuUsage > 50) {
+    //         this.logger.warn('CPU usage over 50% third time:', cpuUsage);
+    //         curSecutiveHighCpuCount++;
+
+    //         setTimeout(async () => {
+    //           cpuUsage = await this.getCurrentCpuUsage();
+    //           if (cpuUsage > 50) {
+    //             this.logger.warn('CPU usage over 50% fourth time:', cpuUsage);
+    //             curSecutiveHighCpuCount++;
+    //           }
+
+    //         }, 2000);
+    //       }
+    //     }, 2000);
+    //   }
+    // }, 2000);
+    // }
+
+    // this.cpuHistory.push({ usage: cpuUsage, timestamp });
+
+    // // 保持历史记录数量
+    // if (this.cpuHistory.length > this.config.consecutiveCount) {
+    //   this.cpuHistory.shift();
+    // }
+
+    // // 检查是否触发告警
+    // this.checkForAlert(cpuUsage);
+  }
+
+  private async _checkCpuUsageRecursive(attempt: number) {
     try {
-      const cpuUsage = await this.getCurrentCpuUsage();
-      const timestamp = Date.now();
-      if (cpuUsage > 50) this.logger.warn('CPU usage over 50%:', cpuUsage);
-
-      this.cpuHistory.push({ usage: cpuUsage, timestamp });
-
-      // 保持历史记录数量
-      if (this.cpuHistory.length > this.config.consecutiveCount) {
-        this.cpuHistory.shift();
+      if (attempt >= 4) {
+        this.checkForAlert();
+        return;
       }
-
-      // 检查是否触发告警
-      this.checkForAlert(cpuUsage);
+      const cpuUsage = await this.getCurrentCpuUsage();
+      if (cpuUsage > 50) {
+        this.logger.warn(`CPU 使用率超过 50% (${++attempt}/4 次):`, cpuUsage);
+        setTimeout(() => {
+          this._checkCpuUsageRecursive.call(this, attempt);
+        }, 2000);
+      }
     } catch (error) {
       this.logger.error('获取 CPU 使用率失败', error);
     }
@@ -168,31 +213,33 @@ export class DeviceMonitorService {
   /**
    * 检查是否需要发送告警
    */
-  private checkForAlert(currentUsage: number): void {
+  private checkForAlert(): void {
     // 检查当前使用率是否超过阈值
-    if (currentUsage < this.config.cpuThreshold) {
-      return;
-    }
+    // if (currentUsage < this.config.cpuThreshold) {
+    //   return;
+    // }
 
-    // 检查历史记录是否足够
-    if (this.cpuHistory.length < this.config.consecutiveCount) {
-      return;
-    }
+    // // 检查历史记录是否足够
+    // if (this.cpuHistory.length < this.config.consecutiveCount) {
+    //   return;
+    // }
 
-    // 检查是否连续超过阈值
-    const consecutiveHighUsage = this.cpuHistory
-      .slice(-this.config.consecutiveCount)
-      .every((record) => record.usage >= this.config.cpuThreshold);
+    // // 检查是否连续超过阈值
+    // const consecutiveHighUsage = this.cpuHistory
+    //   .slice(-this.config.consecutiveCount)
+    //   .every((record) => record.usage >= this.config.cpuThreshold);
 
-    if (!consecutiveHighUsage) {
-      return;
-    }
+    // if (!consecutiveHighUsage) {
+    //   return;
+    // }
 
     // 检查冷却时间
     const now = Date.now();
     if (now - this.lastAlertTime < this.alertCooldown) {
       return;
     }
+
+    this.logger.warn('CPU 使用率连续高负荷，发送告警');
 
     // 发送告警
     this.sendHighCpuAlert();

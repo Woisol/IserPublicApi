@@ -25,7 +25,7 @@ export class ApplicationsWeatherController {
    */
   @Get('config')
   getConfig(): WeatherMonitorConfig {
-    return this.weatherService.getConfig();
+    return this.weatherService.config;
   }
 
   /**
@@ -91,7 +91,7 @@ export class ApplicationsWeatherController {
    */
   @Get('status')
   getStatus() {
-    const config = this.weatherService.getConfig();
+    const config = this.weatherService.config;
     return {
       enabled: !!config.apiKey,
       location: config.location,

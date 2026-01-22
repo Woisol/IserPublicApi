@@ -24,7 +24,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   );
 
   // 默认配置
-  private readonly config: WeatherMonitorConfig = {
+  private readonly _config: WeatherMonitorConfig = {
     location: process.env.QWEATHER_LOCATION,
     apiKey: process.env.QWEATHER_API_KEY || '',
     apiHost: process.env.QWEATHER_API_HOST || 'https://devapi.qweather.com',
@@ -35,7 +35,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   onModuleInit() {
     this.logger.log('Weather monitoring service initialized');
 
-    if (!this.config.apiKey) {
+    if (!this._config.apiKey) {
       this.logger.warn(
         'QWEATHER_API_KEY is not configured, weather monitoring will be disabled',
       );
@@ -43,7 +43,9 @@ export class PushApplicationsWeatherService implements OnModuleInit {
     }
 
     // 可以在这里进行初始化检查
-    this.logger.log(`Weather monitoring for location: ${this.config.location}`);
+    this.logger.log(
+      `Weather monitoring for location: ${this._config.location}`,
+    );
   }
 
   /**
@@ -52,7 +54,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
    */
   @Cron('0 0,30 * * * *') // 每小时的0分和30分执行
   async checkMinutelyRain() {
-    if (!this.config.apiKey) {
+    if (!this._config.apiKey) {
       return;
     }
 
@@ -75,7 +77,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
    */
   @Cron('0 0 8 * * *') // 每天早上8点
   async checkDailyRain() {
-    if (!this.config.apiKey) {
+    if (!this._config.apiKey) {
       return;
     }
 
@@ -260,13 +262,14 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   /**
    * 获取分钟级降水数据
    */
+  // TODO: 缺少失败重试
   private async fetchMinutelyPrecipitation(): Promise<MinutelyPrecipitationResponse | null> {
-    const url = `https://${this.config.apiHost}/v7/minutely/5m?location=${this.config.location}`;
+    const url = `https://${this._config.apiHost}/v7/minutely/5m?location=${this._config.location}`;
 
     try {
       const response = await fetch(url, {
         headers: {
-          'X-QW-Api-Key': this.config.apiKey,
+          'X-QW-Api-Key': this._config.apiKey,
         },
       });
 
@@ -293,12 +296,12 @@ export class PushApplicationsWeatherService implements OnModuleInit {
   private async fetchHourlyWeather(
     hours: '24h' | '72h' | '168h' = '24h',
   ): Promise<HourlyWeatherResponse | null> {
-    const url = `https://${this.config.apiHost}/v7/weather/${hours}?location=${this.config.location}`;
+    const url = `https://${this._config.apiHost}/v7/weather/${hours}?location=${this._config.location}`;
 
     try {
       const response = await fetch(url, {
         headers: {
-          'X-QW-Api-Key': this.config.apiKey,
+          'X-QW-Api-Key': this._config.apiKey,
         },
       });
 
@@ -351,14 +354,14 @@ export class PushApplicationsWeatherService implements OnModuleInit {
    * 更新天气监控配置
    */
   updateConfig(newConfig: Partial<WeatherMonitorConfig>) {
-    Object.assign(this.config, newConfig);
+    Object.assign(this._config, newConfig);
     this.logger.log('Weather monitor config updated:', newConfig);
   }
 
   /**
    * 获取当前配置
    */
-  getConfig(): WeatherMonitorConfig {
-    return { ...this.config };
+  get config(): WeatherMonitorConfig {
+    return { ...this._config };
   }
 }

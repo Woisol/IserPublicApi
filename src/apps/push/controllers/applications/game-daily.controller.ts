@@ -21,8 +21,8 @@ export class GameDailyController {
     return this.gameDailyService.processGameDailyCheck(name);
   }
 
-  @Get('/wake')
-  wakeUpComputer() {
-    return this.gameDailyService.wakeUpComputer();
-  }
+  // @Get('/wake')
+  // wakeUpComputer() {
+  //   return this.gameDailyService.wakeUpComputer();
+  // }
 }
