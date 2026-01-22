@@ -181,8 +181,15 @@ export class MessagesController {
       );
     }
     try {
-      const result = await this.pushService.sendTextMessage(
-        content,
+      // const result = await this.pushService.sendTextMessage(
+      //   content,
+      //   'public_text_trans',
+      // );
+      const result = await this.pushService.sendMarkdownInfoMessage(
+        {
+          title: content,
+          content: [{ IP: this.getClientIp(req) }],
+        },
         'public_text_trans',
       );
 
@@ -201,6 +208,7 @@ export class MessagesController {
   }
 
   // TODO 迁移到公共组件
+  // TODO 实现渐进式的限流？
   private enforceRateLimit(
     key: string,
     req: Request,
