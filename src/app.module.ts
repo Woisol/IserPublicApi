@@ -10,7 +10,7 @@ export class AppModule implements NestModule {
   configure(consumer: MiddlewareConsumer) {
     consumer
       .apply(AuthorityApiKeyMiddleware)
-      .exclude('push/repo', 'push/game-daily')
+      .exclude('push/repo', 'push/game-daily', 'push/tt')
       .forRoutes('push/*path');
   }
 }

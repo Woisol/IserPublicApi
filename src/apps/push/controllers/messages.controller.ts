@@ -5,13 +5,24 @@ import {
   Param,
   HttpException,
   HttpStatus,
+  Query,
 } from '@nestjs/common';
 import { type Request } from 'express';
 import { PushService } from '@app/apps/push/services';
+import { TextTransConfig } from '../types/controllers/message';
 
 @Controller('push')
 export class MessagesController {
-  constructor(private readonly pushService: PushService) {}
+  private readonly lastRequestTimeByKey = new Map<string, number>();
+  private readonly lastGlobalRequestTimeByKey = new Map<string, number>();
+  private readonly textTransConfig: TextTransConfig;
+  constructor(private readonly pushService: PushService) {
+    this.textTransConfig = {
+      rateLimitMs: 3000, // 3秒钟内只能请求一次
+      globalRateLimitMs: 1000, // 不同 IP 也至少间隔 1 秒
+      maxContentLength: 500, // 最大内容长度500字符
+    };
+  }
 
   /**
    * 根据渠道发送文本消息
@@ -128,5 +139,94 @@ export class MessagesController {
         HttpStatus.INTERNAL_SERVER_ERROR,
       );
     }
+  }
+  /**
+   * 通用的 TextTrans 接口，用于向外部人员提供受限的文本推送功能
+   * @param c/contetn 文本内容
+   */
+  @Get('tt')
+  async textTrans(
+    @Query('c') _c: string,
+    @Query('content') _content: string,
+    @Req() req: Request,
+  ): Promise<any> {
+    /**
+     * 通用公开接口建议最少加这些（你这里已做了频控+长度校验）：
+
+     * 认证/鉴权：对外接口可用 API Key、签名或临时 Token；你已用 authority-api-key 覆盖其它接口。
+     * 请求频控：全局 + IP 级别（你已做），并加冷却期或突发桶。
+     * 输入校验：参数类型/长度/格式（URL、枚举、白名单）。
+     * 日志与审计：记录 IP、UA、关键参数哈希，方便追溯。
+     * 错误信息最小化：避免暴露内部细节。
+     * CORS/来源限制：若浏览器调用，限制允许域名。
+     * 防重放：带时间戳与签名的请求（若涉及敏感操作）。
+     * 监控与告警：异常流量自动告警/封禁。
+     */
+    this.enforceRateLimit(
+      'textTrans',
+      req,
+      this.textTransConfig.rateLimitMs,
+      this.textTransConfig.globalRateLimitMs,
+    );
+    const content = _c || _content;
+    if (!content)
+      throw new HttpException(
+        'Missing content parameter',
+        HttpStatus.BAD_REQUEST,
+      );
+    if (content.length > this.textTransConfig.maxContentLength) {
+      throw new HttpException(
+        `Content exceeds maximum length of ${this.textTransConfig.maxContentLength} characters`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    try {
+      const result = await this.pushService.sendTextMessage(
+        content,
+        'public_text_trans',
+      );
+
+      return {
+        success: true,
+        result,
+        timestamp: new Date().toISOString(),
+      };
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      throw new HttpException(
+        `Failed to transmit text: ${message}`,
+        HttpStatus.INTERNAL_SERVER_ERROR,
+      );
+    }
+  }
+
+  // TODO 迁移到公共组件
+  private enforceRateLimit(
+    key: string,
+    req: Request,
+    perIpMs: number,
+    globalMs: number,
+  ): void {
+    const now = Date.now();
+    const ip = this.getClientIp(req);
+    const perIpKey = `${key}:${ip}`;
+
+    const lastGlobal = this.lastGlobalRequestTimeByKey.get(key) ?? 0;
+    const lastPerIp = this.lastRequestTimeByKey.get(perIpKey) ?? 0;
+    if (now - lastGlobal < globalMs || now - lastPerIp < perIpMs) {
+      throw new HttpException(
+        'Too many requests. Please try again later.',
+        HttpStatus.TOO_MANY_REQUESTS,
+      );
+    }
+
+    this.lastGlobalRequestTimeByKey.set(key, now);
+    this.lastRequestTimeByKey.set(perIpKey, now);
+  }
+
+  private getClientIp(req: Request): string {
+    const forwardedFor = (req.headers['x-forwarded-for'] as string) || '';
+    const ipFromHeader = forwardedFor.split(',')[0]?.trim();
+    return ipFromHeader || req.ip || req.socket?.remoteAddress || 'unknown';
   }
 }
