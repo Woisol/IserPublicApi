@@ -15,6 +15,8 @@ import { TextTransConfig } from '../types/controllers/message';
 export class MessagesController {
   private readonly lastRequestTimeByKey = new Map<string, number>();
   private readonly lastGlobalRequestTimeByKey = new Map<string, number>();
+  private readonly ipBanList = new Map<string, number>();
+  private readonly ipRequestHistory = new Map<string, number[]>();
   private readonly textTransConfig: TextTransConfig;
   constructor(private readonly pushService: PushService) {
     this.textTransConfig = {
@@ -140,6 +142,41 @@ export class MessagesController {
       );
     }
   }
+
+  @Get('tt/rbl')
+  removeBanList(@Query('ip') ip: string, @Req() req: Request) {
+    if (!ip)
+      throw new HttpException(
+        'IP parameter is required',
+        HttpStatus.BAD_REQUEST,
+      );
+    // 不能取消自己的封禁，返回的错误消息混淆
+    if (this.ipBanList.has(this.getClientIp(req))) {
+      throw new HttpException(
+        `IP ${ip} not found in black list`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+    if (this.ipBanList.delete(ip)) {
+      return { success: true, message: `IP ${ip} removed from black list` };
+    } else {
+      throw new HttpException(
+        `IP ${ip} not found in black list`,
+        HttpStatus.BAD_REQUEST,
+      );
+    }
+  }
+
+  @Get('tt/abl')
+  addBanList(@Query('ip') ip: string) {
+    if (!ip)
+      throw new HttpException(
+        'IP parameter is required',
+        HttpStatus.BAD_REQUEST,
+      );
+    this.ipBanList.set(ip, Infinity);
+  }
+
   /**
    * 通用的 TextTrans 接口，用于向外部人员提供受限的文本推送功能
    * @param c/contetn 文本内容
@@ -219,6 +256,41 @@ export class MessagesController {
     const ip = this.getClientIp(req);
     const perIpKey = `${key}:${ip}`;
 
+    // 1. Check Blacklist
+    const banExpire = this.ipBanList.get(ip);
+    if (banExpire) {
+      if (now < banExpire) {
+        throw new HttpException(
+          'Too many requests. You are temporarily banned for 5 minutes.',
+          HttpStatus.FORBIDDEN,
+        );
+      } else {
+        //! 确实，通过记录 ban 的截止时间而非 setTimeout 清除……
+        this.ipBanList.delete(ip);
+      }
+    }
+
+    // 2. Check Ban Rule: 5 requests in (rateLimitMs * 5 + 1s)
+    // Only count requests that passed the rate limit check
+    // TODO 应当在 config 中配置
+    const history = this.ipRequestHistory.get(ip) || [];
+    const windowSize = perIpMs * 5 + 1000;
+    // Filter out old requests
+    const validHistory = history.filter((t) => now - t < windowSize);
+
+    // If we already have 5 requests in this window, ban the current one (6th)
+    if (validHistory.length >= 5) {
+      this.ipBanList.set(ip, now + 5 * 60 * 1000); // 5 min ban
+      // this.ipRequestHistory.delete(ip); // Optional: clear history
+      throw new HttpException(
+        'Too many requests. You are temporarily banned for 5 minutes.',
+        HttpStatus.FORBIDDEN,
+      );
+    }
+    // Update history storage (filtered)
+    this.ipRequestHistory.set(ip, validHistory);
+
+    // 3. Normal Rate Limit Check
     const lastGlobal = this.lastGlobalRequestTimeByKey.get(key) ?? 0;
     const lastPerIp = this.lastRequestTimeByKey.get(perIpKey) ?? 0;
     if (now - lastGlobal < globalMs || now - lastPerIp < perIpMs) {
@@ -228,8 +300,12 @@ export class MessagesController {
       );
     }
 
+    // 4. Update State (Success)
     this.lastGlobalRequestTimeByKey.set(key, now);
     this.lastRequestTimeByKey.set(perIpKey, now);
+
+    validHistory.push(now);
+    this.ipRequestHistory.set(ip, validHistory);
   }
 
   private getClientIp(req: Request): string {
