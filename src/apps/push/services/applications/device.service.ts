@@ -56,6 +56,8 @@ export class DeviceMonitorService {
   private lastAlertTime = 0;
   private readonly alertCooldown = 5 * 60 * 1000; // 5分钟冷却时间
 
+  private avgUsage = 0;
+
   constructor(private readonly pushService: PushService) {
     const consecutiveCount = 3;
     this.config = {
@@ -165,9 +167,12 @@ export class DeviceMonitorService {
       const cpuUsage = await this.getCurrentCpuUsage();
       if (cpuUsage > 50) {
         this.logger.warn(`CPU 使用率超过 50% (${++attempt}/4 次):`, cpuUsage);
+        this.avgUsage = (this.avgUsage * (attempt - 1) + cpuUsage) / attempt;
         setTimeout(() => {
           this._checkCpuUsageRecursive.call(this, attempt);
         }, 2000);
+      } else {
+        this.avgUsage = 0;
       }
     } catch (error) {
       this.logger.error('获取 CPU 使用率失败', error);
@@ -251,17 +256,17 @@ export class DeviceMonitorService {
    */
   private sendHighCpuAlert(): void {
     const systemInfo = this.getSystemInfo();
-    const avgUsage =
-      this.cpuHistory
-        .slice(-this.config.consecutiveCount)
-        .reduce((sum, record) => sum + record.usage, 0) /
-      this.config.consecutiveCount;
+    // const avgUsage =
+    //   this.cpuHistory
+    //     .slice(-this.config.consecutiveCount)
+    //     .reduce((sum, record) => sum + record.usage, 0) /
+    //   this.config.consecutiveCount;
 
     const markdownInfo: WxwMarkdownInfo = {
       type: 'Device',
       title: '<font color="warning">CPU 高负荷告警</font>',
       content: [
-        { 过去15min内平均使用率: `${avgUsage.toFixed(2)}%` },
+        { 使用率: `${this.avgUsage.toFixed(2)}%` },
         { 检测时间: new Date().toLocaleString('zh-CN') },
         {
           系统信息: {
