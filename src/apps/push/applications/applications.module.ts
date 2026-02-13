@@ -1,13 +1,15 @@
 import { Module } from '@nestjs/common';
 import {
   PushApplicationsGameDailyController,
+  PushApplicationsMcServerController,
   PushApplicationsRepoController,
   PushApplicationsWeatherController,
 } from '../controllers';
 import {
   PushApplicationsRepoService,
   PushApplicationsWeatherService,
-  DeviceMonitorService,
+  PushApplicationsMcServerService,
+  PushApplicationsDeviceMonitorService,
 } from '../services/applications';
 import { BotKeyLoader } from '../services/botkey-loader';
 import { PushService } from '../services';
@@ -18,6 +20,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsRepoController,
     PushApplicationsWeatherController,
     PushApplicationsGameDailyController,
+    PushApplicationsMcServerController,
   ],
   providers: [
     BotKeyLoader,
@@ -25,12 +28,13 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsRepoService,
     PushApplicationsWeatherService,
     PushApplicationsGameDailyService,
-    DeviceMonitorService,
+    PushApplicationsMcServerService,
+    PushApplicationsDeviceMonitorService,
   ],
   exports: [
     PushApplicationsRepoService,
     PushApplicationsWeatherService,
-    DeviceMonitorService,
+    PushApplicationsDeviceMonitorService,
   ],
 })
 export class PushApplicationsModule {}
