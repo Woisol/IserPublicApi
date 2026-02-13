@@ -1,10 +1,44 @@
-import { Controller, Get, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { McServerService } from '../../services/applications/mcserver.service';
+import * as mcserver from '../../types/applications/mcserver';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Controller('push/mcserver')
 export class McServerController {
+  private readonly logger = new CompactLogger(McServerController.name);
   constructor(private readonly mcServerService: McServerService) {}
 
+  @Post()
+  handleMcServerPush(@Body() body: mcserver.McServerWebhookPayload) {
+    const { event, playerName, currentPlayers } = body;
+    switch (event) {
+      case 'server_started':
+        this.mcServerService.sendServerStart();
+        break;
+      case 'server_stopped':
+        this.mcServerService.sendServerStop();
+        break;
+      case 'player_joined':
+        if (playerName && currentPlayers) {
+          this.mcServerService.sendPlayerJoin(playerName, currentPlayers);
+        } else {
+          this.logger.error(
+            'Player join event missing playerName or currentPlayers',
+          );
+          return;
+        }
+        break;
+      case 'player_left':
+        if (playerName && currentPlayers) {
+          this.mcServerService.sendPlayerLeave(playerName, currentPlayers);
+        } else {
+          this.logger.error(
+            'Player leave event missing playerName or currentPlayers',
+          );
+          return;
+        }
+    }
+  }
   @Get('started')
   serverStarted() {
     this.mcServerService.sendServerStart();
