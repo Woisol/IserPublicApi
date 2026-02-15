@@ -1,11 +1,6 @@
-import {
-  HttpException,
-  Injectable,
-  NotImplementedException,
-} from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { PushService } from '..';
 import { CompactLogger } from '@app/common/utils/logger';
-import { Cron } from '@nestjs/schedule';
 import {
   GameLogFetchOption,
   GameLogFetchRawOption,

@@ -1,7 +1,8 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { McServerService } from '../../services/applications/mcserver.service';
-import * as mcserver from '../../types/applications/mcserver';
+// import * as mcserver from '../../types/applications/mcserver';
 import { CompactLogger } from '@app/common/utils/logger';
+import { type McServerWebhookPayload } from '../../types/applications/mcserver';
 
 @Controller('push/mcserver')
 export class McServerController {
@@ -9,7 +10,7 @@ export class McServerController {
   constructor(private readonly mcServerService: McServerService) {}
 
   @Post()
-  handleMcServerPush(@Body() body: mcserver.McServerWebhookPayload) {
+  handleMcServerPush(@Body() body: McServerWebhookPayload) {
     const { event, playerName, currentPlayers } = body;
     switch (event) {
       case 'server_started':
