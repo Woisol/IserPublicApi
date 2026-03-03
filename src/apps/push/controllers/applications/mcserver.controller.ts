@@ -63,8 +63,9 @@ export class McServerController {
   playerLeave(
     @Query('playerName') playerName: string,
     @Query('curPlayers') curPlayers: string,
+    @Query('playTime') playTime: string,
   ) {
     const curPlayersArr = curPlayers ? curPlayers.split(',') : [];
-    this.mcServerService.sendPlayerLeave(playerName, curPlayersArr);
+    this.mcServerService.sendPlayerLeave(playerName, curPlayersArr, playTime);
   }
 }
