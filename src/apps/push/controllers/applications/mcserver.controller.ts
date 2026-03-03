@@ -11,7 +11,7 @@ export class McServerController {
 
   @Post()
   handleMcServerPush(@Body() body: McServerWebhookPayload) {
-    const { event, playerName, currentPlayers } = body;
+    const { event, playerName, currentPlayers, playTime } = body;
     switch (event) {
       case 'server_started':
         this.mcServerService.sendServerStart();
@@ -30,11 +30,15 @@ export class McServerController {
         }
         break;
       case 'player_left':
-        if (playerName && currentPlayers) {
-          this.mcServerService.sendPlayerLeave(playerName, currentPlayers);
+        if (playerName && currentPlayers && playTime) {
+          this.mcServerService.sendPlayerLeave(
+            playerName,
+            currentPlayers,
+            playTime,
+          );
         } else {
           this.logger.error(
-            'Player leave event missing playerName or currentPlayers',
+            'Player leave event missing playerName or currentPlayers or playTime',
           );
           return;
         }
