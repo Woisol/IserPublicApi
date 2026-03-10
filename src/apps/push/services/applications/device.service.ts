@@ -53,7 +53,7 @@ export class DeviceMonitorService {
   private readonly config: DeviceMonitorConfig;
   private monitorTimer: NodeJS.Timeout | null = null;
   private cpuHistory: CpuUsage[] = [];
-  private lastAlertTime = 0;
+  private lastAlertTime: number = 0;
   private readonly alertCooldown = 5 * 60 * 1000; // 5分钟冷却时间
 
   private avgUsage = 0;
@@ -114,7 +114,15 @@ export class DeviceMonitorService {
    * 检测 CPU 使用率
    */
   private checkCpuUsage() {
-    this._checkCpuUsageRecursive(0);
+    // 检查冷却时间
+    const now = Date.now();
+    if (now - this.lastAlertTime < this.alertCooldown) {
+      return;
+    }
+
+    this._checkCpuUsageRecursive(0).catch((error) => {
+      this.logger.error('获取 CPU 使用率失败', error);
+    });
     // const timestamp = Date.now();
 
     // let curSecutiveHighCpuCount = 0;
@@ -159,23 +167,20 @@ export class DeviceMonitorService {
   }
 
   private async _checkCpuUsageRecursive(attempt: number) {
-    try {
-      if (attempt >= 4) {
-        this.checkForAlert();
-        return;
-      }
-      const cpuUsage = await this.getCurrentCpuUsage();
-      if (cpuUsage > 50) {
-        this.logger.warn(`CPU 使用率超过 50% (${++attempt}/4 次):`, cpuUsage);
-        this.avgUsage = (this.avgUsage * (attempt - 1) + cpuUsage) / attempt;
-        setTimeout(() => {
-          this._checkCpuUsageRecursive.call(this, attempt);
-        }, 2000);
-      } else {
-        this.avgUsage = 0;
-      }
-    } catch (error) {
-      this.logger.error('获取 CPU 使用率失败', error);
+    if (attempt >= 4) {
+      this.sendAlert();
+      return;
+    }
+    const cpuUsage = await this.getCurrentCpuUsage();
+    if (cpuUsage > 50) {
+      this.logger.warn(`CPU 使用率超过 50% (${++attempt}/4 次):`, cpuUsage);
+      this.avgUsage = (this.avgUsage * (attempt - 1) + cpuUsage) / attempt;
+      setTimeout(() => {
+        // 这里需要 call 吗()
+        this._checkCpuUsageRecursive.call(this, attempt);
+      }, 2000);
+    } else {
+      this.avgUsage = 0;
     }
   }
 
@@ -218,41 +223,16 @@ export class DeviceMonitorService {
   /**
    * 检查是否需要发送告警
    */
-  private checkForAlert(): void {
-    // 检查当前使用率是否超过阈值
-    // if (currentUsage < this.config.cpuThreshold) {
-    //   return;
-    // }
-
-    // // 检查历史记录是否足够
-    // if (this.cpuHistory.length < this.config.consecutiveCount) {
-    //   return;
-    // }
-
-    // // 检查是否连续超过阈值
-    // const consecutiveHighUsage = this.cpuHistory
-    //   .slice(-this.config.consecutiveCount)
-    //   .every((record) => record.usage >= this.config.cpuThreshold);
-
-    // if (!consecutiveHighUsage) {
-    //   return;
-    // }
-
-    // 检查冷却时间
-    const now = Date.now();
-    if (now - this.lastAlertTime < this.alertCooldown) {
-      return;
-    }
-
+  private sendAlert(): void {
     this.logger.warn('CPU 使用率连续高负荷，发送告警');
 
     // 发送告警
     this.sendHighCpuAlert();
-    this.lastAlertTime = now;
+    this.lastAlertTime = Date.now();
   }
 
   /**
-   * 发送高 CPU 使用率告警
+   * 发送高 CPU 使用率告警，包含 50% 和 90% 的预警
    */
   private sendHighCpuAlert(): void {
     const systemInfo = this.getSystemInfo();
@@ -262,15 +242,31 @@ export class DeviceMonitorService {
     //     .reduce((sum, record) => sum + record.usage, 0) /
     //   this.config.consecutiveCount;
 
+    const cpuUsage = +this.avgUsage.toFixed(2);
+    const memUsage = +systemInfo.memoryUsage.toFixed(2);
+
     const markdownInfo: WxwMarkdownInfo = {
       type: 'Device',
-      title: '<font color="warning">CPU 高负荷告警</font>',
+      title:
+        cpuUsage > 90
+          ? '⚠️<font color="error">CPU 负载严重过高！</font>⚠️'
+          : '<font color="warning">CPU 高负载预警！</font>',
       content: [
-        { 使用率: `${this.avgUsage.toFixed(2)}%` },
+        {
+          使用率:
+            cpuUsage > 90
+              ? `<font color="error">${cpuUsage}%</font>`
+              : `${cpuUsage}%`,
+        },
         { 检测时间: new Date().toLocaleString('zh-CN') },
         {
           系统信息: {
-            内存使用率: `${systemInfo.memoryUsage.toFixed(2)}%`,
+            内存占用:
+              memUsage > 90
+                ? `<font color="error">${memUsage}%</font>`
+                : memUsage > 50
+                  ? `<font color="warning">${memUsage}%</font>`
+                  : `${memUsage}%`,
             已运行时间: systemInfo.uptime,
             系统: systemInfo.platform,
             CPU: systemInfo.cpuModel,
