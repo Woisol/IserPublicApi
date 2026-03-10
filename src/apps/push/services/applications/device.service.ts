@@ -55,6 +55,10 @@ export class DeviceMonitorService {
   private cpuHistory: CpuUsage[] = [];
   private lastAlertTime: number = 0;
   private readonly alertCooldown = 5 * 60 * 1000; // 5分钟冷却时间
+  private readonly extremeCpuThreshold = 90; // 极端高负荷阈值
+  private readonly warningCpuThreshold = 50; // 高负荷预警阈值
+  private readonly extremeMemThreshold = 90; // 内存极端高占用阈值
+  private readonly warningMemThreshold = 70; // 内存高占用预警阈值
 
   private avgUsage = 0;
 
@@ -172,8 +176,11 @@ export class DeviceMonitorService {
       return;
     }
     const cpuUsage = await this.getCurrentCpuUsage();
-    if (cpuUsage > 50) {
-      this.logger.warn(`CPU 使用率超过 50% (${++attempt}/4 次):`, cpuUsage);
+    if (cpuUsage > this.warningCpuThreshold) {
+      this.logger.warn(
+        `CPU 使用率超过 ${this.warningCpuThreshold}% (${++attempt}/4 次):`,
+        cpuUsage,
+      );
       this.avgUsage = (this.avgUsage * (attempt - 1) + cpuUsage) / attempt;
       setTimeout(() => {
         // 这里需要 call 吗()
@@ -232,7 +239,7 @@ export class DeviceMonitorService {
   }
 
   /**
-   * 发送高 CPU 使用率告警，包含 50% 和 90% 的预警
+   * 发送高 CPU 使用率告警，包含两段使用率的预警
    */
   private sendHighCpuAlert(): void {
     const systemInfo = this.getSystemInfo();
@@ -248,13 +255,13 @@ export class DeviceMonitorService {
     const markdownInfo: WxwMarkdownInfo = {
       type: 'Device',
       title:
-        cpuUsage > 90
+        cpuUsage > this.extremeCpuThreshold
           ? '⚠️<font color="error">CPU 负载严重过高！</font>⚠️'
           : '<font color="warning">CPU 高负载预警！</font>',
       content: [
         {
           使用率:
-            cpuUsage > 90
+            cpuUsage > this.extremeCpuThreshold
               ? `<font color="error">${cpuUsage}%</font>`
               : `${cpuUsage}%`,
         },
@@ -262,9 +269,9 @@ export class DeviceMonitorService {
         {
           系统信息: {
             内存占用:
-              memUsage > 90
+              memUsage > this.extremeMemThreshold
                 ? `<font color="error">${memUsage}%</font>`
-                : memUsage > 50
+                : memUsage > this.warningMemThreshold
                   ? `<font color="warning">${memUsage}%</font>`
                   : `${memUsage}%`,
             已运行时间: systemInfo.uptime,
