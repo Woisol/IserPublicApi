@@ -182,6 +182,8 @@ export class DeviceMonitorService {
         cpuUsage,
       );
       this.avgUsage = (this.avgUsage * (attempt - 1) + cpuUsage) / attempt;
+      // 这里是用 const 还是 let 后 delete 性能更好？
+      // cpuUsage = null; // 释放内存
       setTimeout(() => {
         // 这里需要 call 吗()
         this._checkCpuUsageRecursive.call(this, attempt);
@@ -256,13 +258,13 @@ export class DeviceMonitorService {
       type: 'Device',
       title:
         cpuUsage > this.extremeCpuThreshold
-          ? '⚠️<font color="error">CPU 负载严重过高！</font>⚠️'
+          ? '⚠️`CPU 负载严重过高！`⚠️'
           : '<font color="warning">CPU 高负载预警！</font>',
       content: [
         {
           使用率:
             cpuUsage > this.extremeCpuThreshold
-              ? `<font color="error">${cpuUsage}%</font>`
+              ? `\`${cpuUsage}%\``
               : `${cpuUsage}%`,
         },
         { 检测时间: new Date().toLocaleString('zh-CN') },
@@ -270,7 +272,7 @@ export class DeviceMonitorService {
           系统信息: {
             内存占用:
               memUsage > this.extremeMemThreshold
-                ? `<font color="error">${memUsage}%</font>`
+                ? `\`${memUsage}%\``
                 : memUsage > this.warningMemThreshold
                   ? `<font color="warning">${memUsage}%</font>`
                   : `${memUsage}%`,
