@@ -3,12 +3,12 @@
  * 提供天气监控相关的API接口
  */
 import { Controller, Get, Post, Body } from '@nestjs/common';
-import { PushApplicationsWeatherService } from '../../services/applications/weather.service';
 import type {
   WeatherAlertResult,
   WeatherMonitorConfig,
 } from '../../types/applications/weather.d';
 import { CompactLogger } from '@app/common/utils/logger';
+import { PushApplicationsWeatherService } from '../../services/applications';
 
 @Controller('push/weather')
 export class ApplicationsWeatherController {

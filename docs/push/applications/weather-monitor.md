@@ -83,7 +83,8 @@ GET /push/weather/health
 ### 分钟级降雨预警
 
 ```
-「Weather」⚠️ 30min 后降雨概率 75%
+「Weather」⚠️ 预计 30min 后开始下雨
+未来1小时降水量 1.50mm，峰值 1.50mm/5min
 ```
 
 ### 全天降雨预警

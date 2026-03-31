@@ -17,11 +17,9 @@ import { PushService } from '..';
 import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
-export class PushApplicationsWeatherService implements OnModuleInit {
+export class WeatherService implements OnModuleInit {
   /** 天气监控服务 */
-  private readonly logger = new CompactLogger(
-    PushApplicationsWeatherService.name,
-  );
+  private readonly logger = new CompactLogger(WeatherService.name);
 
   // 默认配置
   private readonly _config: WeatherMonitorConfig = {
@@ -59,8 +57,6 @@ export class PushApplicationsWeatherService implements OnModuleInit {
     }
 
     try {
-      // this.logger.log('Checking minutely rain forecast...');
-
       const result = await this.checkMinutelyRainForecast();
       this.logger.info('Minutely rain forecast result:', result);
       if (result.shouldAlert && result.message) {
@@ -82,8 +78,6 @@ export class PushApplicationsWeatherService implements OnModuleInit {
     }
 
     try {
-      // this.logger.log('Checking daily rain forecast...');
-
       const result = await this.checkDailyRainForecast();
       if (result.shouldAlert && result.message) {
         await this.sendRainAlert(result.message);
@@ -103,9 +97,7 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       const response = await this.fetchMinutelyPrecipitation();
 
       if (!response || !response.minutely) {
-        return {
-          shouldAlert: false,
-        };
+        throw new Error('Invalid minutely precipitation response');
       }
 
       // 检查未来1小时内的降水情况
@@ -115,7 +107,11 @@ export class PushApplicationsWeatherService implements OnModuleInit {
       // 找到未来1小时内会下雨的时间点
       const rainPoints = response.minutely.filter((item) => {
         const itemTime = new Date(item.fxTime);
-        return itemTime <= oneHourLater && parseFloat(item.precip) > 0;
+        return (
+          itemTime <= oneHourLater &&
+          item.type === 'rain' &&
+          parseFloat(item.precip) > 0
+        );
       });
 
       if (rainPoints.length === 0) {
@@ -126,38 +122,29 @@ export class PushApplicationsWeatherService implements OnModuleInit {
 
       // 计算距离第一次降雨的时间
       const firstRainTime = new Date(rainPoints[0].fxTime);
-      const minutesUntilRain = Math.round(
-        (firstRainTime.getTime() - now.getTime()) / (1000 * 60),
+      const minutesUntilRain = Math.max(
+        Math.round((firstRainTime.getTime() - now.getTime()) / (1000 * 60)),
+        0,
       );
 
-      // 基于降水量计算降雨概率
-      // 使用更科学的方法：考虑降水强度分布和时间点数量
-      const precipValues = rainPoints.map((item) => parseFloat(item.precip));
-      const maxPrecip = Math.max(...precipValues);
-      const avgPrecip =
-        precipValues.reduce((sum, val) => sum + val, 0) / precipValues.length;
-
-      // 降水概率计算公式：
-      // 1. 基础概率 = 有降水时间点数 / 总检查时间点数 * 100
-      // 2. 强度修正 = 基于平均降水量的对数函数
-      // 3. 峰值修正 = 考虑最大降水强度
-      const baseProbability = (rainPoints.length / 12) * 100; // 12个5分钟时间点 = 1小时
-      const intensityFactor = Math.min(
-        1 + Math.log10(avgPrecip + 0.1) * 0.3,
-        2,
-      ); // 强度因子
-      const peakFactor = maxPrecip > 1 ? 1.2 : 1; // 峰值因子：如果有时间点降水量>1mm则提升20%
-
-      const probability = Math.min(
-        Math.round(baseProbability * intensityFactor * peakFactor),
-        100,
+      const peakRainPoint = rainPoints.reduce((currentPeak, item) =>
+        parseFloat(item.precip) > parseFloat(currentPeak.precip)
+          ? item
+          : currentPeak,
       );
+      const maxPrecip = parseFloat(peakRainPoint.precip);
+      const peakRainTimeText = this.formatHourMinute(
+        new Date(peakRainPoint.fxTime),
+      );
+      const precipTimeline = rainPoints
+        .map((point) => `${parseFloat(point.precip).toFixed(2)}mm`)
+        .join('|');
 
-      const message = `⚠️ ${minutesUntilRain}min 后降雨概率 ${probability}%
-预报降水量：[${rainPoints.map((p) => `${p.precip}mm`).join(', ')}]`;
+      const message = `⚠️ 预计 ${minutesUntilRain}min 后开始下雨
+预报降雨量 ${precipTimeline}，峰值 ${maxPrecip.toFixed(2)}mm/5min（${peakRainTimeText}）`;
 
       return {
-        shouldAlert: probability >= 50,
+        shouldAlert: true,
         message,
         time: firstRainTime,
       };
@@ -363,5 +350,9 @@ export class PushApplicationsWeatherService implements OnModuleInit {
    */
   get config(): WeatherMonitorConfig {
     return { ...this._config };
+  }
+
+  private formatHourMinute(date: Date): string {
+    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
 }
