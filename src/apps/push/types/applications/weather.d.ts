@@ -65,3 +65,51 @@ export interface WeatherAlertResult {
   message?: string;
   time?: Date;
 }
+
+export type WeatherStartMode = 'idle' | 'watch' | 'precise';
+
+export type WeatherStopMode = 'off' | 'watch' | 'precise';
+
+export interface WeatherRainPeriod {
+  startTime: Date;
+  endTime: Date;
+}
+
+export interface WeatherRuntimeStatus {
+  startMode: WeatherStartMode;
+  stopMode: WeatherStopMode;
+  nextStartCheckAt?: Date;
+  nextStopCheckAt?: Date;
+  nextRainStartAt?: Date;
+  nextRainStopAt?: Date;
+}
+
+export interface WeatherDailyCheckResult {
+  rainPeriods: WeatherRainPeriod[];
+  status: WeatherRuntimeStatus;
+}
+
+export interface WeatherNotifyResult {
+  armed: boolean;
+  stopMode: WeatherStopMode;
+  nextCheckAt?: Date;
+  hasRainWithin2Hours: boolean;
+  nextRainStopAt?: Date;
+  noRainDurationMinutes?: number;
+  sent: boolean;
+  message?: string;
+  reason: string;
+}
+
+export interface WeatherEngineDecision {
+  start: {
+    sent: boolean;
+    message?: string;
+    nextCheckAt?: Date;
+  };
+  stop: {
+    sent: boolean;
+    message?: string;
+    nextCheckAt?: Date;
+  };
+}
