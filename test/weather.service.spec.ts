@@ -76,7 +76,7 @@ describe('WeatherService', () => {
       sendTextMessage: jest.fn(),
     } as any);
 
-    const result = await service.testMinutelyCheck();
+    const result = await service.previewRainStartAlert();
 
     expect(result.shouldAlert).toBe(true);
     expect(result.message).toContain('25min');
@@ -154,12 +154,121 @@ describe('WeatherService', () => {
       sendTextMessage: jest.fn(),
     } as any);
 
-    const result = await service.testDailyCheck();
+    const result = await service.refreshDailyPlan();
     const status = service.getRuntimeStatus();
 
     expect(result.rainPeriods).toHaveLength(1);
     expect(status.startMode).toBe('watch');
     expect(status.stopMode).toBe('off');
+    expect(status).not.toHaveProperty('rainPeriods');
+    expect(status).not.toHaveProperty('plannedDate');
+  });
+
+  it('includes the current rainy hour in daily planning so start tracking does not miss ongoing periods', async () => {
+    const fetchMock = global.fetch as jest.Mock;
+    jest.setSystemTime(new Date('2026-03-31T10:10:00+08:00'));
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '200',
+        updateTime: '2026-03-31T10:10:00+08:00',
+        fxLink: 'https://example.com',
+        hourly: [
+          {
+            fxTime: '2026-03-31T10:00:00+08:00',
+            temp: '21',
+            icon: '305',
+            text: 'Light rain',
+            wind360: '180',
+            windDir: 'S',
+            windScale: '2',
+            windSpeed: '10',
+            humidity: '70',
+            precip: '0.4',
+            pop: '70',
+            pressure: '1012',
+            cloud: '60',
+            dew: '14',
+          },
+          {
+            fxTime: '2026-03-31T11:00:00+08:00',
+            temp: '20',
+            icon: '305',
+            text: 'Light rain',
+            wind360: '180',
+            windDir: 'S',
+            windScale: '2',
+            windSpeed: '10',
+            humidity: '72',
+            precip: '0.2',
+            pop: '60',
+            pressure: '1011',
+            cloud: '65',
+            dew: '14',
+          },
+        ],
+        refer: {
+          sources: ['QWeather'],
+          license: ['test-license'],
+        },
+      }),
+    });
+
+    const service = new WeatherService({
+      sendTextMessage: jest.fn(),
+    } as any);
+
+    const result = await service.refreshDailyPlan();
+
+    expect(result.rainPeriods).toHaveLength(1);
+    expect(result.rainPeriods[0].startTime.toISOString()).toBe(
+      '2026-03-31T02:00:00.000Z',
+    );
+    expect(service.getRuntimeStatus().startMode).toBe('watch');
+  });
+
+  it('previews daily rain periods without mutating runtime tracking state', async () => {
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '200',
+        updateTime: '2026-03-31T10:00:00+08:00',
+        fxLink: 'https://example.com',
+        hourly: [
+          {
+            fxTime: '2026-03-31T11:00:00+08:00',
+            temp: '21',
+            icon: '305',
+            text: 'Light rain',
+            wind360: '200',
+            windDir: 'S',
+            windScale: '2',
+            windSpeed: '12',
+            humidity: '70',
+            precip: '0.4',
+            pop: '70',
+            pressure: '1011',
+            cloud: '60',
+            dew: '15',
+          },
+        ],
+        refer: {
+          sources: ['QWeather'],
+          license: ['test-license'],
+        },
+      }),
+    });
+
+    const service = new WeatherService({
+      sendTextMessage: jest.fn(),
+    } as any);
+
+    const result = await service.previewDailyPlan();
+
+    expect(result.rainPeriods).toHaveLength(1);
+    expect(service.getRuntimeStatus().startMode).toBe('idle');
+    expect(service.getRuntimeStatus().stopMode).toBe('off');
   });
 
   it('arms stop tracking only after notifyNextNoRain is called manually', async () => {
@@ -226,13 +335,105 @@ describe('WeatherService', () => {
 
     expect(service.getRuntimeStatus().stopMode).toBe('off');
 
-    const result = await service.notifyNextNoRain();
+    const result = await service.armNextNoRainNotification();
     const status = service.getRuntimeStatus();
 
     expect(result.armed).toBe(true);
     expect(result.stopMode).toBe('precise');
     expect(result.noRainDurationMinutes).toBe(30);
     expect(status.stopMode).toBe('precise');
+  });
+
+  it('keeps stop tracking in watch mode when the predicted stop time is still far away', async () => {
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: async () => ({
+        code: '200',
+        updateTime: '2026-03-31T10:00:00+08:00',
+        fxLink: 'https://example.com',
+        summary: 'Rain will continue for a while',
+        minutely: Array.from({ length: 25 }, (_, index) => {
+          const minutes = index * 5;
+          const hour = 10 + Math.floor(minutes / 60);
+          const minute = minutes % 60;
+          return {
+            fxTime: `2026-03-31T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00+08:00`,
+            precip: index < 18 ? '0.20' : '0',
+            type: 'rain' as const,
+          };
+        }),
+        refer: {
+          sources: ['QWeather'],
+          license: ['test-license'],
+        },
+      }),
+    });
+
+    const service = new WeatherService({
+      sendTextMessage: jest.fn(),
+    } as any);
+
+    const result = await service.armNextNoRainNotification();
+
+    expect(result.armed).toBe(true);
+    expect(result.stopMode).toBe('watch');
+    expect(service.getRuntimeStatus().stopMode).toBe('watch');
+  });
+
+  it('persists start-tracking backoff after a minutely request failure', async () => {
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:00:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '200',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: false,
+        status: 500,
+      });
+
+    const service = new WeatherService({
+      sendTextMessage: jest.fn(),
+    } as any);
+
+    await service.refreshDailyPlan();
+    await service.advanceWeatherEngineTick();
+
+    expect(service.getRuntimeStatus().nextStartCheckAt?.toISOString()).toBe(
+      '2026-03-31T02:30:00.000Z',
+    );
+
+    jest.setSystemTime(new Date('2026-03-31T10:05:00+08:00'));
+    await service.advanceWeatherEngineTick();
+
+    expect(fetchMock).toHaveBeenCalledTimes(2);
   });
 
   it('sends a stop notification during heartbeat only after manual arming', async () => {
@@ -467,11 +668,11 @@ describe('WeatherService', () => {
       sendTextMessage,
     } as any);
 
-    await service.testDailyCheck();
-    await service.notifyNextNoRain();
+    await service.refreshDailyPlan();
+    await service.armNextNoRainNotification();
 
     jest.setSystemTime(new Date('2026-03-31T10:10:00+08:00'));
-    const result = await service.runEngineTick();
+    const result = await service.advanceWeatherEngineTick();
 
     expect(result.stop.sent).toBe(true);
     expect(sendTextMessage).toHaveBeenCalledWith(

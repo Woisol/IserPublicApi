@@ -50,7 +50,7 @@ export class ApplicationsWeatherController {
     message?: string;
   }> {
     try {
-      const result = await this.weatherService.testMinutelyCheck();
+      const result = await this.weatherService.previewRainStartAlert();
       return {
         success: true,
         result,
@@ -74,7 +74,7 @@ export class ApplicationsWeatherController {
     message?: string;
   }> {
     try {
-      const result = await this.weatherService.testDailyCheck();
+      const result = await this.weatherService.previewDailyPlan();
       return {
         success: true,
         result,
@@ -96,7 +96,7 @@ export class ApplicationsWeatherController {
     success: boolean;
     result: WeatherNotifyResult;
   }> {
-    const result = await this.weatherService.notifyNextNoRain();
+    const result = await this.weatherService.armNextNoRainNotification();
     return {
       success: true,
       result,

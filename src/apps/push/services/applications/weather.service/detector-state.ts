@@ -26,7 +26,15 @@ export class WeatherDetectorStateStore {
   };
 
   getSnapshot(): WeatherRuntimeStatus {
-    return { ...this.state };
+    // 行吧说是只返回公共字段
+    return {
+      startMode: this.state.startMode,
+      stopMode: this.state.stopMode,
+      nextStartCheckAt: this.state.nextStartCheckAt,
+      nextStopCheckAt: this.state.nextStopCheckAt,
+      nextRainStartAt: this.state.nextRainStartAt,
+      nextRainStopAt: this.state.nextRainStopAt,
+    };
   }
 
   getRawState(): WeatherDetectorState {

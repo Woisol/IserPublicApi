@@ -23,7 +23,12 @@ export interface MinutelyPrecipitationResponse extends QWeatherBaseResponse {
   minutely: MinutelyPrecipitationData[];
 }
 
-// 逐小时天气预报接口
+/**
+ * 逐小时天气预报接口
+ * - fxTime: 预报时间，格式为 "2024-06-01T14:00+08:00"
+ * - temp: 温度，单位摄氏度
+ * - icon: 天气状况图标代码
+ */
 export interface HourlyWeatherData {
   fxTime: string; // 预报时间
   temp: string; // 温度，摄氏度

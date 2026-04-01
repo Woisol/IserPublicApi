@@ -1,7 +1,3 @@
-/**
- * 天气监控服务
- * 基于和风天气API实现降雨预警功能
- */
 import { Injectable, OnModuleInit } from '@nestjs/common';
 import { Cron } from '@nestjs/schedule';
 import type {
@@ -21,22 +17,24 @@ import {
   analyzeRainStart,
   analyzeRainStop,
   buildRainPeriods,
+  atHour,
+  dateKey,
+  plusDays,
+  plusMinutes,
 } from './weather.service/index.service';
 
 @Injectable()
 export class WeatherService implements OnModuleInit {
-  /** 天气监控服务 */
   private readonly logger = new CompactLogger(WeatherService.name);
 
-  // 默认配置
   private readonly _config: WeatherMonitorConfig = {
     location: process.env.QWEATHER_LOCATION,
     apiKey: process.env.QWEATHER_API_KEY || '',
     apiHost: process.env.QWEATHER_API_HOST || 'devapi.qweather.com',
   };
 
-  private readonly detectorState = new WeatherDetectorStateStore();
-  private readonly forecastService = new WeatherForecastService(
+  private readonly trackingState = new WeatherDetectorStateStore();
+  private readonly forecastClient = new WeatherForecastService(
     () => this._config,
     this.logger,
   );
@@ -56,20 +54,21 @@ export class WeatherService implements OnModuleInit {
     this.logger.log(
       `Weather monitoring for location: ${this._config.location}`,
     );
-    void this.rebuildDailyPlan(new Date());
+    void this.refreshDailyPlan(new Date());
   }
 
+  // #region 三个自动方法
   /**
-   * 每5分钟运行一次心跳，根据 nextCheckAt 决定是否真正请求天气接口
+   * 8 点到 25 点(?)每5分钟运行一次心跳，根据 nextCheckAt 决定是否真正请求天气接口
    */
-  @Cron('0 */5 * * * *')
+  @Cron('0 */5 0-1,8-23 * * *')
   async heartbeat() {
     if (!this._config.apiKey) {
       return;
     }
 
     try {
-      const decision = await this.runEngineTick();
+      const decision = await this.advanceWeatherEngineTick();
       this.logger.debug('Weather engine tick result:', decision);
     } catch (error) {
       this.logger.error('Weather engine tick failed:', error);
@@ -80,12 +79,12 @@ export class WeatherService implements OnModuleInit {
    * 每天早上8点重建当天降雨计划
    */
   @Cron('0 0 8 * * *')
-  async morningPlanning() {
+  async morningPlannig() {
     if (!this._config.apiKey) {
       return;
     }
 
-    await this.rebuildDailyPlan(new Date());
+    await this.refreshDailyPlan(new Date());
   }
 
   /**
@@ -97,208 +96,125 @@ export class WeatherService implements OnModuleInit {
       return;
     }
 
-    await this.rebuildDailyPlan(new Date());
+    await this.refreshDailyPlan(new Date());
   }
 
-  async runEngineTick(now = new Date()): Promise<WeatherEngineDecision> {
-    if (!this._config.apiKey) {
-      return {
-        start: { sent: false },
-        stop: { sent: false },
-      };
-    }
-
-    await this.ensureDailyPlan(now);
-
-    const startDecision = await this.processRainStart(now);
-    const stopDecision = await this.processRainStop(now);
-
-    return {
-      start: startDecision,
-      stop: stopDecision,
-    };
+  // #region 下雨预警
+  /**
+   * checkRainStart(now, { previewOnly: true }) 的包装，主要用于手动请求路由
+   */
+  async previewRainStartAlert(now = new Date()): Promise<WeatherAlertResult> {
+    return this.checkRainStart(now, { previewOnly: true });
   }
 
-  async notifyNextNoRain(now = new Date()): Promise<WeatherNotifyResult> {
-    if (!this._config.apiKey) {
-      return {
-        armed: false,
-        stopMode: 'off',
-        hasRainWithin2Hours: false,
-        sent: false,
-        reason: 'missing-api-key',
-      };
-    }
-
-    const response = await this.forecastService.fetchMinutelyPrecipitation();
-    if (!response?.minutely) {
-      this.detectorState.clearStopTracking();
-      return {
-        armed: false,
-        stopMode: 'off',
-        hasRainWithin2Hours: false,
-        sent: false,
-        reason: 'minutely-unavailable',
-      };
-    }
-
-    const analysis = analyzeRainStop(response.minutely, now);
-    if (
-      analysis.shouldNotifyNow &&
-      analysis.message &&
-      analysis.nextRainStopAt
-    ) {
-      await this.sendRainAlert(analysis.message);
-      this.detectorState.rememberStopAlert(analysis.nextRainStopAt);
-      this.detectorState.clearStopTracking();
-      return {
-        armed: false,
-        stopMode: 'off',
-        nextCheckAt: undefined,
-        hasRainWithin2Hours: analysis.hasRainWithin2Hours,
-        nextRainStopAt: analysis.nextRainStopAt,
-        noRainDurationMinutes: analysis.noRainDurationMinutes,
-        sent: true,
-        message: analysis.message,
-        reason: 'sent-immediately',
-      };
-    }
-
-    if (!analysis.hasRainWithin2Hours && !analysis.shouldTrack) {
-      this.detectorState.clearStopTracking();
-      return {
-        armed: false,
-        stopMode: 'off',
-        nextCheckAt: undefined,
-        hasRainWithin2Hours: false,
-        sent: false,
-        reason: 'no-rain-within-2h',
-      };
-    }
-
-    if (analysis.nextRainStopAt) {
-      const mode = this.resolveModeForTarget(now, analysis.nextRainStopAt);
-      const nextCheckAt = this.computeFollowUpCheckAt(
-        now,
-        mode,
-        analysis.nextRainStopAt,
-      );
-      this.detectorState.setStopTracking(
-        mode,
-        nextCheckAt,
-        analysis.nextRainStopAt,
-      );
-
-      return {
-        armed: true,
-        stopMode: mode,
-        nextCheckAt,
-        hasRainWithin2Hours: analysis.hasRainWithin2Hours,
-        nextRainStopAt: analysis.nextRainStopAt,
-        noRainDurationMinutes: analysis.noRainDurationMinutes,
-        sent: false,
-        reason: 'tracking-stop',
-      };
-    }
-
-    const fallbackCheckAt = this.addMinutes(now, 30);
-    this.detectorState.setStopTracking('watch', fallbackCheckAt);
-    return {
-      armed: true,
-      stopMode: 'watch',
-      nextCheckAt: fallbackCheckAt,
-      hasRainWithin2Hours: analysis.hasRainWithin2Hours,
-      noRainDurationMinutes: analysis.noRainDurationMinutes,
-      sent: false,
-      reason: 'waiting-for-stop-window',
-    };
-  }
-
-  async testMinutelyCheck(now = new Date()): Promise<WeatherAlertResult> {
-    const response = await this.forecastService.fetchMinutelyPrecipitation();
-    if (!response?.minutely) {
-      return { shouldAlert: false };
-    }
-
-    const analysis = analyzeRainStart(response.minutely, now);
-    return {
-      shouldAlert: !!analysis.nextRainStartAt,
-      message: analysis.message,
-      time: analysis.nextRainStartAt,
-    };
-  }
-
-  async testDailyCheck(now = new Date()): Promise<WeatherDailyCheckResult> {
-    const rainPeriods = await this.rebuildDailyPlan(now);
+  async refreshDailyPlan(now = new Date()): Promise<WeatherDailyCheckResult> {
+    const rainPeriods = await this.loadDailyPlan(now);
     return {
       rainPeriods,
       status: this.getRuntimeStatus(),
     };
   }
 
-  getRuntimeStatus(): WeatherRuntimeStatus {
-    return this.detectorState.getSnapshot();
+  async previewDailyPlan(now = new Date()): Promise<WeatherDailyCheckResult> {
+    const rainPeriods = await this.loadDailyPlan(now, { persist: false });
+    return {
+      rainPeriods,
+      status: this.getRuntimeStatus(),
+    };
   }
 
+  // !核心方法
   /**
-   * 更新天气监控配置
+   * 根据小时级数据分析降雨段，不加参数默认更新状态
    */
-  updateConfig(newConfig: Partial<WeatherMonitorConfig>) {
-    Object.assign(this._config, newConfig);
-    this.logger.log('Weather monitor config updated:', newConfig);
-  }
-
+  private async loadDailyPlan(now: Date): Promise<WeatherRainPeriod[]>;
   /**
-   * 获取当前配置
+   * 根据小时级数据分析降雨段
    */
-  get config(): WeatherMonitorConfig {
-    return { ...this._config };
-  }
+  private async loadDailyPlan(
+    now: Date,
+    options: { persist: boolean },
+  ): Promise<WeatherRainPeriod[]>;
+  private async loadDailyPlan(
+    now: Date,
+    options: { persist: boolean } = { persist: true },
+  ): Promise<WeatherRainPeriod[]> {
+    const response = await this.forecastClient.fetchHourlyWeather();
+    const rainPeriods = buildRainPeriods(response?.hourly ?? [], now);
 
-  private async ensureDailyPlan(now: Date) {
-    const state = this.detectorState.getRawState();
-    if (state.plannedDate === this.formatDateKey(now)) {
-      return;
+    if (options.persist) {
+      this.trackingState.setDailyPlan(dateKey(now), rainPeriods);
+      this.updateStartTrackingFromPlan(now, rainPeriods);
     }
 
-    await this.rebuildDailyPlan(now);
-  }
-
-  private async rebuildDailyPlan(now: Date): Promise<WeatherRainPeriod[]> {
-    const response = await this.forecastService.fetchHourlyWeather();
-    const rainPeriods = buildRainPeriods(response?.hourly ?? [], now);
-    this.detectorState.setDailyPlan(this.formatDateKey(now), rainPeriods);
-    this.syncStartTracking(now, rainPeriods);
     return rainPeriods;
   }
 
-  private syncStartTracking(now: Date, rainPeriods: WeatherRainPeriod[]) {
-    const nextPeriod = rainPeriods.find(
-      (period) => period.startTime.getTime() > now.getTime(),
+  /**
+   * 根据降雨段更新状态机
+   */
+  private updateStartTrackingFromPlan(
+    now: Date,
+    rainPeriods: WeatherRainPeriod[],
+  ) {
+    const trackedPeriod = rainPeriods.find(
+      (period) => period.endTime.getTime() > now.getTime(),
     );
 
-    if (!nextPeriod) {
-      this.detectorState.setStartTracking(
+    // 当天没有降雨期
+    if (!trackedPeriod) {
+      this.trackingState.setStartTracking(
         'idle',
-        this.computeNextCoarseCheck(now),
+        this.getNextDailyPlanningTime(now),
       );
       return;
     }
 
-    const mode = this.resolveModeForTarget(now, nextPeriod.startTime);
+    const periodAlreadyStarted =
+      trackedPeriod.startTime.getTime() <= now.getTime();
+    const startMode = periodAlreadyStarted
+      ? 'watch'
+      : this.getStartTrackingMode(now, trackedPeriod.startTime);
     const nextCheckAt =
-      mode === 'idle' ? this.addMinutes(nextPeriod.startTime, -60) : now;
-    this.detectorState.setStartTracking(
-      mode,
+      startMode === 'idle' ? plusMinutes(trackedPeriod.startTime, -60) : now;
+
+    this.trackingState.setStartTracking(
+      startMode,
       nextCheckAt,
-      nextPeriod.startTime,
+      periodAlreadyStarted ? undefined : trackedPeriod.startTime,
     );
   }
 
-  private async processRainStart(
+  /**
+   *
+   */
+  private async checkRainStart(
     now: Date,
-  ): Promise<WeatherEngineDecision['start']> {
-    const state = this.detectorState.getRawState();
+  ): Promise<WeatherEngineDecision['start']>;
+  // options: { previewOnly: false },
+  private async checkRainStart(
+    now: Date,
+    options: { previewOnly: boolean },
+  ): Promise<WeatherAlertResult>;
+  private async checkRainStart(
+    now: Date,
+    options: { previewOnly: boolean } = { previewOnly: false },
+  ): Promise<WeatherAlertResult | WeatherEngineDecision['start']> {
+    if (options.previewOnly) {
+      const response = await this.forecastClient.fetchMinutelyPrecipitation();
+      if (!response?.minutely) {
+        return { shouldAlert: false };
+      }
+
+      const analysis = analyzeRainStart(response.minutely, now);
+      return {
+        shouldAlert: Boolean(analysis.nextRainStartAt),
+        message: analysis.message,
+        time: analysis.nextRainStartAt,
+      };
+    }
+
+    const state = this.trackingState.getRawState();
     if (
       !state.nextStartCheckAt ||
       state.nextStartCheckAt.getTime() > now.getTime()
@@ -309,46 +225,56 @@ export class WeatherService implements OnModuleInit {
       };
     }
 
-    const response = await this.forecastService.fetchMinutelyPrecipitation();
+    const response = await this.forecastClient.fetchMinutelyPrecipitation();
     if (!response?.minutely) {
+      const retryMode =
+        state.startMode === 'precise' || state.startMode === 'idle'
+          ? 'watch'
+          : state.startMode;
+      const nextCheckAt = plusMinutes(now, 30);
+      this.trackingState.setStartTracking(
+        retryMode,
+        nextCheckAt,
+        state.nextRainStartAt,
+      );
       return {
         sent: false,
-        nextCheckAt: this.addMinutes(now, 30),
+        nextCheckAt,
       };
     }
 
     const analysis = analyzeRainStart(response.minutely, now);
     if (!analysis.nextRainStartAt || !analysis.message) {
-      this.syncStartTracking(now, state.rainPeriods);
+      this.updateStartTrackingFromPlan(now, state.rainPeriods);
       return {
         sent: false,
-        nextCheckAt: this.detectorState.getSnapshot().nextStartCheckAt,
+        nextCheckAt: this.trackingState.getSnapshot().nextStartCheckAt,
       };
     }
 
-    const mode = this.resolveModeForTarget(now, analysis.nextRainStartAt);
-    const nextCheckAt = this.computeFollowUpCheckAt(
+    const startMode = this.getStartTrackingMode(now, analysis.nextRainStartAt);
+    const nextCheckAt = this.getNextStartTrackingCheckAt(
       now,
-      mode,
+      startMode,
       analysis.nextRainStartAt,
     );
-    this.detectorState.setStartTracking(
-      mode,
+    this.trackingState.setStartTracking(
+      startMode,
       nextCheckAt,
       analysis.nextRainStartAt,
     );
 
     if (
-      mode === 'precise' &&
-      !this.detectorState.hasSentStartAlert(analysis.nextRainStartAt)
+      startMode === 'precise' &&
+      !this.trackingState.hasSentStartAlert(analysis.nextRainStartAt)
     ) {
       await this.sendRainAlert(analysis.message);
-      this.detectorState.rememberStartAlert(analysis.nextRainStartAt);
-      await this.rebuildDailyPlan(now);
+      this.trackingState.rememberStartAlert(analysis.nextRainStartAt);
+      await this.refreshDailyPlan(now);
       return {
         sent: true,
         message: analysis.message,
-        nextCheckAt: this.detectorState.getSnapshot().nextStartCheckAt,
+        nextCheckAt: this.trackingState.getSnapshot().nextStartCheckAt,
       };
     }
 
@@ -358,102 +284,7 @@ export class WeatherService implements OnModuleInit {
     };
   }
 
-  private async processRainStop(
-    now: Date,
-  ): Promise<WeatherEngineDecision['stop']> {
-    const state = this.detectorState.getRawState();
-    if (state.stopMode === 'off') {
-      return { sent: false };
-    }
-
-    if (
-      state.nextStopCheckAt &&
-      state.nextStopCheckAt.getTime() > now.getTime()
-    ) {
-      return {
-        sent: false,
-        nextCheckAt: state.nextStopCheckAt,
-      };
-    }
-
-    const response = await this.forecastService.fetchMinutelyPrecipitation();
-    if (!response?.minutely) {
-      this.detectorState.setStopTracking('watch', this.addMinutes(now, 30));
-      return {
-        sent: false,
-        nextCheckAt: this.detectorState.getSnapshot().nextStopCheckAt,
-      };
-    }
-
-    const analysis = analyzeRainStop(
-      response.minutely,
-      now,
-      state.nextRainStopAt,
-    );
-    if (
-      analysis.shouldNotifyNow &&
-      analysis.message &&
-      analysis.nextRainStopAt
-    ) {
-      if (!this.detectorState.hasSentStopAlert(analysis.nextRainStopAt)) {
-        await this.sendRainAlert(analysis.message);
-        this.detectorState.rememberStopAlert(analysis.nextRainStopAt);
-      }
-      this.detectorState.clearStopTracking();
-      return {
-        sent: true,
-        message: analysis.message,
-      };
-    }
-
-    if (!analysis.hasRainWithin2Hours && !analysis.shouldTrack) {
-      this.detectorState.clearStopTracking();
-      return { sent: false };
-    }
-
-    if (analysis.nextRainStopAt) {
-      const mode = this.resolveModeForTarget(now, analysis.nextRainStopAt);
-      const nextCheckAt = this.computeFollowUpCheckAt(
-        now,
-        mode,
-        analysis.nextRainStopAt,
-      );
-      this.detectorState.setStopTracking(
-        mode,
-        nextCheckAt,
-        analysis.nextRainStopAt,
-      );
-      return {
-        sent: false,
-        nextCheckAt,
-      };
-    }
-
-    const nextCheckAt = this.addMinutes(now, 30);
-    this.detectorState.setStopTracking(
-      'watch',
-      nextCheckAt,
-      state.nextRainStopAt,
-    );
-    return {
-      sent: false,
-      nextCheckAt,
-    };
-  }
-
-  /**
-   * 发送天气预警消息
-   */
-  private async sendRainAlert(message: string) {
-    try {
-      await this.pushService.sendTextMessage(message, 'weather');
-    } catch (error) {
-      this.logger.error('Failed to send rain alert:', error);
-      throw error;
-    }
-  }
-
-  private resolveModeForTarget(
+  private getStartTrackingMode(
     now: Date,
     targetTime: Date,
   ): 'idle' | 'watch' | 'precise' {
@@ -472,45 +303,307 @@ export class WeatherService implements OnModuleInit {
     return 'idle';
   }
 
-  private computeFollowUpCheckAt(
+  private getNextStartTrackingCheckAt(
     now: Date,
-    mode: 'idle' | 'watch' | 'precise',
+    startMode: 'idle' | 'watch' | 'precise',
     targetTime: Date,
   ): Date {
-    if (mode === 'precise') {
-      return this.addMinutes(now, 5);
+    if (startMode === 'precise') {
+      return plusMinutes(now, 5);
     }
 
-    if (mode === 'watch') {
-      const preciseBoundary = this.addMinutes(targetTime, -10);
-      const halfHourLater = this.addMinutes(now, 30);
+    if (startMode === 'watch') {
+      const preciseBoundary = plusMinutes(targetTime, -10);
+      const halfHourLater = plusMinutes(now, 30);
       return preciseBoundary.getTime() > now.getTime() &&
         preciseBoundary.getTime() < halfHourLater.getTime()
         ? preciseBoundary
         : halfHourLater;
     }
 
-    return this.computeNextCoarseCheck(now);
+    return this.getNextDailyPlanningTime(now);
   }
 
-  private computeNextCoarseCheck(now: Date): Date {
-    const todayAt16 = new Date(now);
-    todayAt16.setHours(16, 0, 0, 0);
+  // #region 停雨通知
+  /**
+   * 请求停雨通知主入口
+   */
+  async armNextNoRainNotification(
+    now = new Date(),
+  ): Promise<WeatherNotifyResult> {
+    if (!this._config.apiKey) {
+      return {
+        armed: false,
+        stopMode: 'off',
+        hasRainWithin2Hours: false,
+        sent: false,
+        reason: 'missing-api-key',
+      };
+    }
+
+    const response = await this.forecastClient.fetchMinutelyPrecipitation();
+    if (!response?.minutely) {
+      this.trackingState.clearStopTracking();
+      return {
+        armed: false,
+        stopMode: 'off',
+        hasRainWithin2Hours: false,
+        sent: false,
+        reason: 'minutely-unavailable',
+      };
+    }
+
+    const analysis = analyzeRainStop(response.minutely, now);
+    if (
+      analysis.shouldNotifyNow &&
+      analysis.message &&
+      analysis.nextRainStopAt
+    ) {
+      await this.sendRainAlert(analysis.message);
+      this.trackingState.rememberStopAlert(analysis.nextRainStopAt);
+      this.trackingState.clearStopTracking();
+      return {
+        armed: false,
+        stopMode: 'off',
+        hasRainWithin2Hours: analysis.hasRainWithin2Hours,
+        nextRainStopAt: analysis.nextRainStopAt,
+        noRainDurationMinutes: analysis.noRainDurationMinutes,
+        sent: true,
+        message: analysis.message,
+        reason: 'sent-immediately',
+      };
+    }
+
+    if (!analysis.hasRainWithin2Hours && !analysis.shouldTrack) {
+      this.trackingState.clearStopTracking();
+      return {
+        armed: false,
+        stopMode: 'off',
+        hasRainWithin2Hours: false,
+        sent: false,
+        reason: 'no-rain-within-2h',
+      };
+    }
+
+    if (analysis.nextRainStopAt) {
+      const stopMode = this.getStopTrackingMode(now, analysis.nextRainStopAt);
+      const nextCheckAt = this.getNextStopTrackingCheckAt(
+        now,
+        stopMode,
+        analysis.nextRainStopAt,
+      );
+      this.trackingState.setStopTracking(
+        stopMode,
+        nextCheckAt,
+        analysis.nextRainStopAt,
+      );
+
+      return {
+        armed: true,
+        stopMode,
+        nextCheckAt,
+        hasRainWithin2Hours: analysis.hasRainWithin2Hours,
+        nextRainStopAt: analysis.nextRainStopAt,
+        noRainDurationMinutes: analysis.noRainDurationMinutes,
+        sent: false,
+        reason: 'tracking-stop',
+      };
+    }
+
+    const nextCheckAt = plusMinutes(now, 30);
+    this.trackingState.setStopTracking('watch', nextCheckAt);
+    return {
+      armed: true,
+      stopMode: 'watch',
+      nextCheckAt,
+      hasRainWithin2Hours: analysis.hasRainWithin2Hours,
+      noRainDurationMinutes: analysis.noRainDurationMinutes,
+      sent: false,
+      reason: 'waiting-for-stop-window',
+    };
+  }
+
+  private async advanceStopTracking(
+    now: Date,
+  ): Promise<WeatherEngineDecision['stop']> {
+    const state = this.trackingState.getRawState();
+    if (state.stopMode === 'off') {
+      return { sent: false };
+    }
+
+    if (
+      state.nextStopCheckAt &&
+      state.nextStopCheckAt.getTime() > now.getTime()
+    ) {
+      return {
+        sent: false,
+        nextCheckAt: state.nextStopCheckAt,
+      };
+    }
+
+    const response = await this.forecastClient.fetchMinutelyPrecipitation();
+    if (!response?.minutely) {
+      const nextCheckAt = plusMinutes(now, 30);
+      this.trackingState.setStopTracking(
+        'watch',
+        nextCheckAt,
+        state.nextRainStopAt,
+      );
+      return {
+        sent: false,
+        nextCheckAt,
+      };
+    }
+
+    const analysis = analyzeRainStop(
+      response.minutely,
+      now,
+      state.nextRainStopAt,
+    );
+    if (
+      analysis.shouldNotifyNow &&
+      analysis.message &&
+      analysis.nextRainStopAt
+    ) {
+      if (!this.trackingState.hasSentStopAlert(analysis.nextRainStopAt)) {
+        await this.sendRainAlert(analysis.message);
+        this.trackingState.rememberStopAlert(analysis.nextRainStopAt);
+      }
+      this.trackingState.clearStopTracking();
+      return {
+        sent: true,
+        message: analysis.message,
+      };
+    }
+
+    if (!analysis.hasRainWithin2Hours && !analysis.shouldTrack) {
+      this.trackingState.clearStopTracking();
+      return { sent: false };
+    }
+
+    if (analysis.nextRainStopAt) {
+      const stopMode = this.getStopTrackingMode(now, analysis.nextRainStopAt);
+      const nextCheckAt = this.getNextStopTrackingCheckAt(
+        now,
+        stopMode,
+        analysis.nextRainStopAt,
+      );
+      this.trackingState.setStopTracking(
+        stopMode,
+        nextCheckAt,
+        analysis.nextRainStopAt,
+      );
+      return {
+        sent: false,
+        nextCheckAt,
+      };
+    }
+
+    const nextCheckAt = plusMinutes(now, 30);
+    this.trackingState.setStopTracking(
+      'watch',
+      nextCheckAt,
+      state.nextRainStopAt,
+    );
+    return {
+      sent: false,
+      nextCheckAt,
+    };
+  }
+
+  private getStopTrackingMode(
+    now: Date,
+    targetTime: Date,
+  ): 'watch' | 'precise' {
+    const minutesUntilTarget = Math.round(
+      (targetTime.getTime() - now.getTime()) / (1000 * 60),
+    );
+
+    return minutesUntilTarget <= 10 ? 'precise' : 'watch';
+  }
+
+  private getNextStopTrackingCheckAt(
+    now: Date,
+    stopMode: 'watch' | 'precise',
+    targetTime: Date,
+  ): Date {
+    if (stopMode === 'precise') {
+      return plusMinutes(now, 5);
+    }
+
+    const preciseBoundary = plusMinutes(targetTime, -10);
+    const halfHourLater = plusMinutes(now, 30);
+    return preciseBoundary.getTime() > now.getTime() &&
+      preciseBoundary.getTime() < halfHourLater.getTime()
+      ? preciseBoundary
+      : halfHourLater;
+  }
+
+  // #region general
+  async advanceWeatherEngineTick(
+    now = new Date(),
+  ): Promise<WeatherEngineDecision> {
+    if (!this._config.apiKey) {
+      return {
+        start: { sent: false },
+        stop: { sent: false },
+      };
+    }
+
+    await this.ensureTodayPlan(now);
+
+    return {
+      start: await this.checkRainStart(now, { previewOnly: false }),
+      stop: await this.advanceStopTracking(now),
+    };
+  }
+
+  getRuntimeStatus(): WeatherRuntimeStatus {
+    return this.trackingState.getSnapshot();
+  }
+
+  /**
+   * 更新天气监控配置
+   */
+  updateConfig(newConfig: Partial<WeatherMonitorConfig>) {
+    Object.assign(this._config, newConfig);
+    this.logger.log('Weather monitor config updated:', newConfig);
+  }
+
+  /**
+   * 获取当前配置
+   */
+  get config(): WeatherMonitorConfig {
+    return { ...this._config };
+  }
+
+  private async ensureTodayPlan(now: Date) {
+    const state = this.trackingState.getRawState();
+    if (state.plannedDate === dateKey(now)) {
+      return;
+    }
+
+    await this.refreshDailyPlan(now);
+  }
+
+  /**
+   * 发送天气预警消息
+   */
+  private async sendRainAlert(message: string) {
+    try {
+      await this.pushService.sendTextMessage(message, 'weather');
+    } catch (error) {
+      this.logger.error('Failed to send rain alert:', error);
+      throw error;
+    }
+  }
+
+  private getNextDailyPlanningTime(now: Date): Date {
+    const todayAt16 = atHour(now, 16);
     if (todayAt16.getTime() > now.getTime()) {
       return todayAt16;
     }
 
-    const tomorrowAt8 = new Date(now);
-    tomorrowAt8.setDate(tomorrowAt8.getDate() + 1);
-    tomorrowAt8.setHours(8, 0, 0, 0);
-    return tomorrowAt8;
-  }
-
-  private addMinutes(date: Date, minutes: number): Date {
-    return new Date(date.getTime() + minutes * 60 * 1000);
-  }
-
-  private formatDateKey(date: Date): string {
-    return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`;
+    return atHour(plusDays(now, 1), 8);
   }
 }
