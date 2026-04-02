@@ -4,6 +4,7 @@ import type {
   MinutelyPrecipitationResponse,
   WeatherMonitorConfig,
 } from '../../../types/applications/weather.d';
+import { retry } from '../../../utils/fetch';
 
 /**
  * WeatherForecastService - 和风天气 API 封装，获取天气预报数据
@@ -26,14 +27,22 @@ export class WeatherForecastService {
    */
   async fetchMinutelyPrecipitation(): Promise<MinutelyPrecipitationResponse | null> {
     const config = this.getConfig();
-    const url = `https://${config.apiHost}/v7/minutely/5m?location=${config.location}`;
+    const url = `${config.apiHost}/v7/minutely/5m?location=${config.location}`;
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'X-QW-Api-Key': config.apiKey,
+      const response = await retry(
+        () =>
+          fetch(url, {
+            headers: {
+              'X-QW-Api-Key': config.apiKey,
+            },
+          }),
+        {
+          retries: 2,
+          delayMs: 1000,
+          shouldRetry: (res) => !res.ok,
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
@@ -69,14 +78,22 @@ export class WeatherForecastService {
     hours: '24h' | '72h' | '168h' = '24h',
   ): Promise<HourlyWeatherResponse | null> {
     const config = this.getConfig();
-    const url = `https://${config.apiHost}/v7/weather/${hours}?location=${config.location}`;
+    const url = `${config.apiHost}/v7/weather/${hours}?location=${config.location}`;
 
     try {
-      const response = await fetch(url, {
-        headers: {
-          'X-QW-Api-Key': config.apiKey,
+      const response = await retry(
+        () =>
+          fetch(url, {
+            headers: {
+              'X-QW-Api-Key': config.apiKey,
+            },
+          }),
+        {
+          retries: 2,
+          delayMs: 1000,
+          shouldRetry: (res) => !res.ok,
         },
-      });
+      );
 
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);

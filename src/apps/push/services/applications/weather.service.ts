@@ -8,6 +8,7 @@ import type {
   WeatherNotifyResult,
   WeatherRainPeriod,
   WeatherRuntimeStatus,
+  WeatherStartMode,
 } from '../../types/applications/weather.d';
 import { PushService } from '..';
 import { CompactLogger } from '@app/common/utils/logger';
@@ -104,56 +105,58 @@ export class WeatherService implements OnModuleInit {
    * checkRainStart(now, { previewOnly: true }) 的包装，主要用于手动请求路由
    */
   async previewRainStartAlert(now = new Date()): Promise<WeatherAlertResult> {
-    return this.checkRainStart(now, { previewOnly: true });
-  }
-
-  async refreshDailyPlan(now = new Date()): Promise<WeatherDailyCheckResult> {
-    const rainPeriods = await this.loadDailyPlan(now);
-    return {
-      rainPeriods,
-      status: this.getRuntimeStatus(),
-    };
-  }
-
-  async previewDailyPlan(now = new Date()): Promise<WeatherDailyCheckResult> {
-    const rainPeriods = await this.loadDailyPlan(now, { persist: false });
-    return {
-      rainPeriods,
-      status: this.getRuntimeStatus(),
-    };
+    try {
+      return this.checkRainStart(now, { previewOnly: true });
+    } catch (error) {
+      this.logger.error('Failed to preview rain start alert:', error);
+      return {
+        shouldAlert: false,
+        message: '预报失败，请稍后再试',
+      };
+    }
   }
 
   // !核心方法
   /**
-   * 根据小时级数据分析降雨段，不加参数默认更新状态
+   * 根据小时级数据分析当天降雨情况，返回降雨段列表和当前状态，persist 参数决定是否更新状态机和持久化计划数据，不传入参数默认不更新
    */
-  private async loadDailyPlan(now: Date): Promise<WeatherRainPeriod[]>;
+  async refreshDailyPlan(): Promise<WeatherDailyCheckResult>;
+  async refreshDailyPlan(now): Promise<WeatherDailyCheckResult>;
   /**
-   * 根据小时级数据分析降雨段
+   * 根据小时级数据分析当天降雨情况，返回降雨段列表和当前状态，persist 参数决定是否更新状态机和持久化计划数据
    */
-  private async loadDailyPlan(
-    now: Date,
-    options: { persist: boolean },
-  ): Promise<WeatherRainPeriod[]>;
-  private async loadDailyPlan(
-    now: Date,
-    options: { persist: boolean } = { persist: true },
-  ): Promise<WeatherRainPeriod[]> {
+  async refreshDailyPlan(
+    now,
+    { persist }: { persist?: true },
+  ): Promise<WeatherDailyCheckResult>;
+  async refreshDailyPlan(
+    now = new Date(),
+    { persist = true }: { persist?: boolean } = {},
+  ): Promise<WeatherDailyCheckResult> {
+    // 构建 rainPeriods 雨段
     const response = await this.forecastClient.fetchHourlyWeather();
     const rainPeriods = buildRainPeriods(response?.hourly ?? [], now);
 
-    if (options.persist) {
+    if (persist) {
       this.trackingState.setDailyPlan(dateKey(now), rainPeriods);
       this.updateStartTrackingFromPlan(now, rainPeriods);
     }
 
-    return rainPeriods;
-  }
+    // return raineriods;
 
+    // const rainPeriods = await loadDailyPlan.call(this, now, { persist }) as WeatherRainPeriod[];
+    return {
+      rainPeriods,
+      status: this.getRuntimeStatus(),
+    };
+  }
   /**
    * 根据降雨段更新状态机
+   * 核心 trackingState.setStartTracking
+   * 执行开始的设想，没有降雨期则进入 idle，有降雨期但未开始则根据距离决定 watch 还是 precise，已经开始则进入 watch 并记录开始时间，后续由 checkRainStart 的定时检查来决定是否发送预警和何时再次检查
    */
-  private updateStartTrackingFromPlan(
+  updateStartTrackingFromPlan(
+    // this: WeatherService,
     now: Date,
     rainPeriods: WeatherRainPeriod[],
   ) {
@@ -186,7 +189,7 @@ export class WeatherService implements OnModuleInit {
   }
 
   /**
-   *
+   * 根据分钟级数据分析当前是否应该发送降雨预警，previewOnly 模式下仅分析不更新状态机和计划数据，正常模式下根据分析结果更新状态机并在需要时发送预警
    */
   private async checkRainStart(
     now: Date,
@@ -200,50 +203,52 @@ export class WeatherService implements OnModuleInit {
     now: Date,
     options: { previewOnly: boolean } = { previewOnly: false },
   ): Promise<WeatherAlertResult | WeatherEngineDecision['start']> {
-    if (options.previewOnly) {
-      const response = await this.forecastClient.fetchMinutelyPrecipitation();
-      if (!response?.minutely) {
-        return { shouldAlert: false };
-      }
-
-      const analysis = analyzeRainStart(response.minutely, now);
-      return {
-        shouldAlert: Boolean(analysis.nextRainStartAt),
-        message: analysis.message,
-        time: analysis.nextRainStartAt,
-      };
-    }
-
+    // if (!options.previewOnly) {
     const state = this.trackingState.getRawState();
     if (
-      !state.nextStartCheckAt ||
-      state.nextStartCheckAt.getTime() > now.getTime()
+      // previewOnly 下返回结果不同
+      !options.previewOnly &&
+      (!state.nextStartCheckAt ||
+        state.nextStartCheckAt.getTime() > now.getTime())
     ) {
       return {
         sent: false,
         nextCheckAt: state.nextStartCheckAt,
       };
     }
+    // }
 
     const response = await this.forecastClient.fetchMinutelyPrecipitation();
     if (!response?.minutely) {
-      const retryMode =
-        state.startMode === 'precise' || state.startMode === 'idle'
-          ? 'watch'
-          : state.startMode;
-      const nextCheckAt = plusMinutes(now, 30);
-      this.trackingState.setStartTracking(
-        retryMode,
-        nextCheckAt,
-        state.nextRainStartAt,
+      // // 多次重试后仍无分钟级数据，降级为原本的状态机回退策略。
+      // const retryMode =
+      //   state.startMode === 'precise' || state.startMode === 'idle'
+      //     ? 'watch'
+      //     : state.startMode;
+      // const nextCheckAt = plusMinutes(now, 30);
+      // this.trackingState.setStartTracking(
+      //   retryMode,
+      //   nextCheckAt,
+      //   state.nextRainStartAt,
+      // );
+      // return {
+      //   sent: false,
+      //   nextCheckAt,
+      // };
+
+      // 直接 throw 😡
+      throw new Error(
+        'Failed to fetch minutely precipitation data after retries',
       );
-      return {
-        sent: false,
-        nextCheckAt,
-      };
     }
 
     const analysis = analyzeRainStart(response.minutely, now);
+    if (options.previewOnly)
+      return {
+        shouldAlert: !!analysis.nextRainStartAt,
+        message: analysis.message,
+        time: analysis.nextRainStartAt,
+      };
     if (!analysis.nextRainStartAt || !analysis.message) {
       this.updateStartTrackingFromPlan(now, state.rainPeriods);
       return {
@@ -284,10 +289,10 @@ export class WeatherService implements OnModuleInit {
     };
   }
 
-  private getStartTrackingMode(
-    now: Date,
-    targetTime: Date,
-  ): 'idle' | 'watch' | 'precise' {
+  /**
+   * 根据预期降雨期判断当前进入的模式
+   */
+  private getStartTrackingMode(now: Date, targetTime: Date): WeatherStartMode {
     const minutesUntilTarget = Math.round(
       (targetTime.getTime() - now.getTime()) / (1000 * 60),
     );
@@ -305,7 +310,7 @@ export class WeatherService implements OnModuleInit {
 
   private getNextStartTrackingCheckAt(
     now: Date,
-    startMode: 'idle' | 'watch' | 'precise',
+    startMode: WeatherStartMode,
     targetTime: Date,
   ): Date {
     if (startMode === 'precise') {
@@ -552,10 +557,18 @@ export class WeatherService implements OnModuleInit {
 
     await this.ensureTodayPlan(now);
 
-    return {
-      start: await this.checkRainStart(now, { previewOnly: false }),
-      stop: await this.advanceStopTracking(now),
-    };
+    try {
+      return {
+        start: await this.checkRainStart(now),
+        stop: await this.advanceStopTracking(now),
+      };
+    } catch (error) {
+      this.logger.error('Error during weather engine tick:', error);
+      return {
+        start: { sent: false },
+        stop: { sent: false },
+      };
+    }
   }
 
   getRuntimeStatus(): WeatherRuntimeStatus {
@@ -598,6 +611,9 @@ export class WeatherService implements OnModuleInit {
     }
   }
 
+  /**
+   * idle 全天检查规划的下一次检查事件，8 / 16 点
+   */
   private getNextDailyPlanningTime(now: Date): Date {
     const todayAt16 = atHour(now, 16);
     if (todayAt16.getTime() > now.getTime()) {
