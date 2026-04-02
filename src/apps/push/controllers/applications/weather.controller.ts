@@ -74,7 +74,9 @@ export class ApplicationsWeatherController {
     message?: string;
   }> {
     try {
-      const result = await this.weatherService.refreshDailyPlan();
+      const result = await this.weatherService.refreshDailyPlan(new Date(), {
+        force: true,
+      });
       return {
         success: true,
         result,

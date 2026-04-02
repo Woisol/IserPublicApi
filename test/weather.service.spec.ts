@@ -271,6 +271,120 @@ describe('WeatherService', () => {
     expect(service.getRuntimeStatus().stopMode).toBe('off');
   });
 
+  it('reuses the current daily plan unless refreshDailyPlan is forced', async () => {
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:00:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '200',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:05:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T15:00:00+08:00',
+              temp: '19',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '220',
+              windDir: 'SW',
+              windScale: '2',
+              windSpeed: '10',
+              humidity: '75',
+              precip: '0.2',
+              pop: '60',
+              pressure: '1010',
+              cloud: '70',
+              dew: '16',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValue({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:10:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T16:00:00+08:00',
+              temp: '18',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '200',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '10',
+              humidity: '76',
+              precip: '0.1',
+              pop: '50',
+              pressure: '1009',
+              cloud: '75',
+              dew: '16',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      });
+
+    const service = new WeatherService({
+      sendTextMessage: jest.fn(),
+    } as any);
+
+    const first = await service.refreshDailyPlan();
+    const second = await service.refreshDailyPlan();
+    const forced = await service.refreshDailyPlan(new Date(), { force: true });
+
+    expect(first.rainPeriods[0].startTime.toISOString()).toBe(
+      '2026-03-31T03:00:00.000Z',
+    );
+    expect(second.rainPeriods[0].startTime.toISOString()).toBe(
+      '2026-03-31T03:00:00.000Z',
+    );
+    expect(forced.rainPeriods[0].startTime.toISOString()).toBe(
+      '2026-03-31T07:00:00.000Z',
+    );
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
   it('arms stop tracking only after notifyNextNoRain is called manually', async () => {
     const fetchMock = global.fetch as jest.Mock;
     fetchMock.mockResolvedValue({

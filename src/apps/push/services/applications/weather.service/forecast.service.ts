@@ -5,14 +5,22 @@ import type {
   WeatherMonitorConfig,
 } from '../../../types/applications/weather.d';
 import { retry } from '../../../utils/fetch';
+import { dateKey } from './index.service';
+
+type QueryType = 'hourly' | 'minutely';
+type RequestTimes = Record<QueryType, number>;
 
 /**
  * WeatherForecastService - 和风天气 API 封装，获取天气预报数据
  */
 export class WeatherForecastService {
+  private requestRecord: Record<string, RequestTimes> = {};
+  private readonly logger: CompactLogger = new CompactLogger(
+    WeatherForecastService.name,
+  );
   constructor(
     private readonly getConfig: () => WeatherMonitorConfig,
-    private readonly logger: CompactLogger,
+    // private readonly logger: CompactLogger,
   ) {}
 
   /**
@@ -52,6 +60,8 @@ export class WeatherForecastService {
       if (data.code !== '200') {
         throw new Error(`API error! code: ${data.code}`);
       }
+
+      this._increaseRequestCount('minutely');
 
       return data;
     } catch (error) {
@@ -103,11 +113,41 @@ export class WeatherForecastService {
       if (data.code !== '200') {
         throw new Error(`API error! code: ${data.code}`);
       }
-
+      this._increaseRequestCount('hourly');
       return data;
     } catch (error) {
       this.logger.error('Failed to fetch hourly weather data:', error);
       return null;
     }
+  }
+
+  private _increaseRequestCount(type: QueryType): void {
+    const key = dateKey(new Date());
+    if (!this.requestRecord[key]) {
+      const previousDay = Object.keys(this.requestRecord).pop();
+      if (previousDay) {
+        this.logger.info(
+          `${previousDay}'s request count: ${Object.entries(
+            this.requestRecord[previousDay],
+          )
+            .map(([t, count]) => `${t}: ${count}`)
+            .join(', ')}`,
+        );
+      }
+      // 直接清空之前的数据
+      this.requestRecord = {};
+      this.requestRecord[key] = { hourly: 0, minutely: 0 };
+    }
+    this.requestRecord[key][type] += 1;
+  }
+
+  getRequestCount(): RequestTimes;
+  getRequestCount(type: QueryType): number;
+  getRequestCount(type?: QueryType): RequestTimes | number {
+    const key = dateKey(new Date());
+    if (!type) {
+      return this.requestRecord[key] || { hourly: 0, minutely: 0 };
+    }
+    return this.requestRecord[key]?.[type] || 0;
   }
 }
