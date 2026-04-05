@@ -72,16 +72,16 @@ export class WeatherDetectorStateStore {
     this.state.nextRainStopAt = undefined;
   }
 
-  rememberStartAlert(alertTime: Date) {
-    this.state.lastSentStartKey = alertTime.toISOString();
+  rememberStartAlert(alertKey: string) {
+    this.state.lastSentStartKey = alertKey;
   }
 
   rememberStopAlert(stopTime: Date) {
     this.state.lastSentStopKey = stopTime.toISOString();
   }
 
-  hasSentStartAlert(alertTime: Date): boolean {
-    return this.state.lastSentStartKey === alertTime.toISOString();
+  hasSentStartAlert(alertKey: string): boolean {
+    return this.state.lastSentStartKey === alertKey;
   }
 
   hasSentStopAlert(stopTime: Date): boolean {

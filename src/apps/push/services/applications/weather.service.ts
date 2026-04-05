@@ -282,13 +282,20 @@ export class WeatherService implements OnModuleInit {
       nextCheckAt,
       analysis.nextRainStartAt,
     );
+    const trackedPeriod = state.rainPeriods.find(
+      (period) => period.endTime.getTime() > now.getTime(),
+    );
+    const startAlertKey = trackedPeriod
+      ? `${trackedPeriod.startTime.toISOString()}_${trackedPeriod.endTime.toISOString()}`
+      : analysis.nextRainStartAt.toISOString();
 
+    // 在 presice 模式而且没发送过时发送预警
     if (
       startMode === 'precise' &&
-      !this.trackingState.hasSentStartAlert(analysis.nextRainStartAt)
+      !this.trackingState.hasSentStartAlert(startAlertKey)
     ) {
       await this.sendRainAlert(analysis.message);
-      this.trackingState.rememberStartAlert(analysis.nextRainStartAt);
+      this.trackingState.rememberStartAlert(startAlertKey);
       await this.refreshDailyPlan(now, { force: true });
       return {
         sent: true,

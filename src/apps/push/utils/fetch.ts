@@ -34,7 +34,7 @@ export async function retry<T>(
       lastError = error;
       const allowRetry = shouldRetryOnError(error, attempt);
       if (!allowRetry || attempt === retries) {
-        throw error.message?? error;
+        throw error.message ?? error;
       }
     }
 

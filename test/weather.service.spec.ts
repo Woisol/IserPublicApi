@@ -363,6 +363,98 @@ describe('WeatherService', () => {
             license: ['test-license'],
           },
         }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:05:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T10:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '20',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '72',
+              precip: '0.2',
+              pop: '60',
+              pressure: '1010',
+              cloud: '65',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:05:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T10:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '20',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '72',
+              precip: '0.2',
+              pop: '60',
+              pressure: '1010',
+              cloud: '65',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
       });
 
     const service = new WeatherService({
@@ -383,6 +475,186 @@ describe('WeatherService', () => {
       '2026-03-31T07:00:00.000Z',
     );
     expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it('sends the rain-start alert only once within the same hourly rain period', async () => {
+    const sendTextMessage = jest.fn();
+    const fetchMock = global.fetch as jest.Mock;
+    fetchMock
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:00:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T10:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '20',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '72',
+              precip: '0.2',
+              pop: '60',
+              pressure: '1010',
+              cloud: '65',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:00:00+08:00',
+          fxLink: 'https://example.com',
+          summary: 'Rain is starting',
+          minutely: [
+            {
+              fxTime: '2026-03-31T10:00:00+08:00',
+              precip: '0.50',
+              type: 'rain',
+            },
+            {
+              fxTime: '2026-03-31T10:05:00+08:00',
+              precip: '0.20',
+              type: 'rain',
+            },
+            {
+              fxTime: '2026-03-31T10:10:00+08:00',
+              precip: '0',
+              type: 'rain',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:00:00+08:00',
+          fxLink: 'https://example.com',
+          hourly: [
+            {
+              fxTime: '2026-03-31T10:00:00+08:00',
+              temp: '21',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '70',
+              precip: '0.4',
+              pop: '70',
+              pressure: '1011',
+              cloud: '60',
+              dew: '15',
+            },
+            {
+              fxTime: '2026-03-31T11:00:00+08:00',
+              temp: '20',
+              icon: '305',
+              text: 'Light rain',
+              wind360: '180',
+              windDir: 'S',
+              windScale: '2',
+              windSpeed: '12',
+              humidity: '72',
+              precip: '0.2',
+              pop: '60',
+              pressure: '1010',
+              cloud: '65',
+              dew: '15',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      })
+      .mockResolvedValueOnce({
+        ok: true,
+        json: async () => ({
+          code: '200',
+          updateTime: '2026-03-31T10:05:00+08:00',
+          fxLink: 'https://example.com',
+          summary: 'Rain is still ongoing',
+          minutely: [
+            {
+              fxTime: '2026-03-31T10:05:00+08:00',
+              precip: '0.40',
+              type: 'rain',
+            },
+            {
+              fxTime: '2026-03-31T10:10:00+08:00',
+              precip: '0.10',
+              type: 'rain',
+            },
+            {
+              fxTime: '2026-03-31T10:15:00+08:00',
+              precip: '0',
+              type: 'rain',
+            },
+          ],
+          refer: {
+            sources: ['QWeather'],
+            license: ['test-license'],
+          },
+        }),
+      });
+
+    const service = new WeatherService({
+      sendTextMessage,
+    } as any);
+
+    const firstPlan = await service.refreshDailyPlan(
+      new Date('2026-03-31T10:00:00+08:00'),
+      { force: true },
+    );
+    expect(firstPlan.rainPeriods).toHaveLength(1);
+
+    const firstTick = await service.advanceWeatherEngineTick(
+      new Date('2026-03-31T10:00:00+08:00'),
+    );
+    expect(firstTick.start.sent).toBe(true);
+    expect(sendTextMessage).toHaveBeenCalledTimes(1);
+
+    const secondTick = await service.advanceWeatherEngineTick(
+      new Date('2026-03-31T10:05:00+08:00'),
+    );
+    expect(secondTick.start.sent).toBe(false);
+    expect(sendTextMessage).toHaveBeenCalledTimes(1);
   });
 
   it('arms stop tracking only after notifyNextNoRain is called manually', async () => {
