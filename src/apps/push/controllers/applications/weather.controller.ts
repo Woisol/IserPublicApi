@@ -5,9 +5,7 @@
 import { Controller, Get, Post, Body } from '@nestjs/common';
 import type {
   WeatherAlertResult,
-  WeatherDailyCheckResult,
   WeatherMonitorConfig,
-  WeatherNotifyResult,
 } from '../../types/applications/weather.d';
 import { CompactLogger } from '@app/common/utils/logger';
 import { PushApplicationsWeatherService } from '../../services/applications';
@@ -50,7 +48,7 @@ export class ApplicationsWeatherController {
     message?: string;
   }> {
     try {
-      const result = await this.weatherService.previewRainStartAlert();
+      const result = await this.weatherService.testMinutelyCheck();
       return {
         success: true,
         result,
@@ -70,18 +68,16 @@ export class ApplicationsWeatherController {
   @Get('check/daily')
   async checkDaily(): Promise<{
     success: boolean;
-    result: WeatherDailyCheckResult;
+    result: WeatherAlertResult;
     message?: string;
   }> {
     try {
-      const result = await this.weatherService.refreshDailyPlan(new Date(), {
-        force: true,
-      });
+      const result = await this.weatherService.testDailyCheck();
       return {
         success: true,
         result,
-        message: result.rainPeriods.length
-          ? 'Daily rain periods were planned'
+        message: result.shouldAlert
+          ? 'Daily rain alert would be sent'
           : 'No rain expected today',
       };
     } catch (error) {
@@ -91,32 +87,15 @@ export class ApplicationsWeatherController {
   }
 
   /**
-   * 手动触发一次停雨跟踪初始化
-   */
-  @Post('notify/next-no-rain')
-  async notifyNextNoRain(): Promise<{
-    success: boolean;
-    result: WeatherNotifyResult;
-  }> {
-    const result = await this.weatherService.armNextNoRainNotification();
-    return {
-      success: true,
-      result,
-    };
-  }
-
-  /**
    * 获取服务状态
    */
   @Get('status')
   getStatus() {
     const config = this.weatherService.config;
-    const runtime = this.weatherService.getRuntimeStatus();
     return {
       enabled: !!config.apiKey,
       location: config.location,
       apiHost: config.apiHost,
-      runtime,
       lastCheck: new Date().toISOString(),
       status: config.apiKey ? 'active' : 'disabled - missing API key',
     };
