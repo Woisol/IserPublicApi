@@ -3,10 +3,23 @@
  * 当 CPU 连续高负荷时发送告警消息
  */
 import { Injectable } from '@nestjs/common';
-import { PushService } from '..';
-import { WxwMarkdownInfo } from '../../types/wxw-webhook';
+import { PushService } from '../index';
+import type { WxwMarkdownInfo } from '../../types/wxw-webhook';
 import * as os from 'os';
-import { CompactLogger } from '@app/common/utils/logger';
+import { CompactLogger } from '../../../../common/utils/logger';
+import { execFile } from 'child_process';
+import { promisify } from 'util';
+
+const execFileAsync = promisify(execFile);
+
+export interface HighCpuApplication {
+  /** 应用或进程名称 */
+  name: string;
+  /** 进程 ID */
+  pid: number;
+  /** CPU 使用率百分比 */
+  usage: number;
+}
 
 export interface DeviceMonitorConfig {
   /** CPU 使用率阈值（百分比） */
@@ -57,6 +70,7 @@ export class DeviceMonitorService {
   private readonly alertCooldown = 5 * 60 * 1000; // 5分钟冷却时间
   private readonly extremeCpuThreshold = 90; // 极端高负荷阈值
   private readonly warningCpuThreshold = 50; // 高负荷预警阈值
+  private readonly highCpuApplicationThreshold = 30;
   private readonly extremeMemThreshold = 90; // 内存极端高占用阈值
   private readonly warningMemThreshold = 70; // 内存高占用预警阈值
 
@@ -172,7 +186,7 @@ export class DeviceMonitorService {
 
   private async _checkCpuUsageRecursive(attempt: number) {
     if (attempt >= 4) {
-      this.sendAlert();
+      await this.sendAlert();
       return;
     }
     const cpuUsage = await this.getCurrentCpuUsage();
@@ -185,8 +199,9 @@ export class DeviceMonitorService {
       // 这里是用 const 还是 let 后 delete 性能更好？
       // cpuUsage = null; // 释放内存
       setTimeout(() => {
-        // 这里需要 call 吗()
-        this._checkCpuUsageRecursive.call(this, attempt);
+        void this._checkCpuUsageRecursive(attempt).catch((error) => {
+          this.logger.error('获取 CPU 使用率失败', error);
+        });
       }, 2000);
     } else {
       this.avgUsage = 0;
@@ -232,18 +247,18 @@ export class DeviceMonitorService {
   /**
    * 检查是否需要发送告警
    */
-  private sendAlert(): void {
+  private async sendAlert(): Promise<void> {
     this.logger.warn('CPU 使用率连续高负荷，发送告警');
+    this.lastAlertTime = Date.now();
 
     // 发送告警
-    this.sendHighCpuAlert();
-    this.lastAlertTime = Date.now();
+    await this.sendHighCpuAlert();
   }
 
   /**
    * 发送高 CPU 使用率告警，包含两段使用率的预警
    */
-  private sendHighCpuAlert(): void {
+  private async sendHighCpuAlert(): Promise<void> {
     const systemInfo = this.getSystemInfo();
     // const avgUsage =
     //   this.cpuHistory
@@ -253,6 +268,17 @@ export class DeviceMonitorService {
 
     const cpuUsage = +this.avgUsage.toFixed(2);
     const memUsage = +systemInfo.memoryUsage.toFixed(2);
+    const highCpuApplications = await this.getHighCpuApplications();
+    const applicationDetails = highCpuApplications.length
+      ? Object.fromEntries(
+          highCpuApplications.map((application) => [
+            `${application.name} (PID ${application.pid})`,
+            `${application.usage.toFixed(2)}%`,
+          ]),
+        )
+      : {
+          状态: `未发现 CPU 占用率超过 ${this.highCpuApplicationThreshold}% 的应用`,
+        };
 
     const markdownInfo: WxwMarkdownInfo = {
       type: 'Device',
@@ -282,10 +308,86 @@ export class DeviceMonitorService {
             核心数: systemInfo.cpuCount.toString(),
           },
         },
+        { '高 CPU 应用': applicationDetails },
       ],
     };
 
     this.sendStructuredNotification(markdownInfo);
+  }
+
+  /**
+   * 获取当前 CPU 占用率超过阈值的应用进程。
+   * Windows 使用系统性能计数器，Unix-like 系统使用 ps。
+   */
+  private async getHighCpuApplications(): Promise<HighCpuApplication[]> {
+    try {
+      if (process.platform === 'win32') {
+        return await this.getWindowsHighCpuApplications();
+      }
+
+      const { stdout } = await execFileAsync('ps', ['-eo', 'pid=,comm=,pcpu=']);
+
+      return stdout
+        .toString()
+        .split(/\r?\n/)
+        .map((line) => line.trim().match(/^(\d+)\s+(\S+)\s+([\d.]+)$/))
+        .filter(
+          (match): match is RegExpMatchArray =>
+            match !== null &&
+            Number(match[3]) > this.highCpuApplicationThreshold,
+        )
+        .map((match) => ({
+          pid: Number(match[1]),
+          name: match[2],
+          usage: Number(match[3]),
+        }));
+    } catch (error) {
+      this.logger.error('获取高 CPU 应用失败', error);
+      return [];
+    }
+  }
+
+  private async getWindowsHighCpuApplications(): Promise<HighCpuApplication[]> {
+    const script = [
+      "$ErrorActionPreference = 'Stop'",
+      'Get-CimInstance Win32_PerfFormattedData_PerfProc_Process',
+      `| Where-Object { $_.IDProcess -gt 0 -and $_.Name -notin @('_Total', 'Idle') -and $_.PercentProcessorTime -gt ${this.highCpuApplicationThreshold} }`,
+      "| Select-Object @{Name='name';Expression={$_.Name}}, @{Name='pid';Expression={$_.IDProcess}}, @{Name='usage';Expression={$_.PercentProcessorTime}}",
+      '| ConvertTo-Json -Compress',
+    ].join(' ');
+    const { stdout } = await execFileAsync(
+      'powershell.exe',
+      ['-NoProfile', '-NonInteractive', '-Command', script],
+      { windowsHide: true, maxBuffer: 1024 * 1024 },
+    );
+    const output = stdout.toString().trim();
+    if (!output) {
+      return [];
+    }
+
+    const parsed: unknown = JSON.parse(output);
+    const applications = Array.isArray(parsed) ? parsed : [parsed];
+
+    return applications.flatMap((application) => {
+      if (!application || typeof application !== 'object') {
+        return [];
+      }
+
+      const value = application as Record<string, unknown>;
+      const name = typeof value.name === 'string' ? value.name : null;
+      const pid = Number(value.pid);
+      const usage = Number(value.usage);
+      if (
+        !name ||
+        !Number.isInteger(pid) ||
+        !Number.isFinite(usage) ||
+        usage <= this.highCpuApplicationThreshold
+      ) {
+        return [];
+      }
+
+      return [{ name, pid, usage }];
+    });
   }
 
   /**
