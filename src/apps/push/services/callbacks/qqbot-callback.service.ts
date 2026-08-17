@@ -28,11 +28,8 @@ export class QqbotCallbackService {
   }
 
   async handleEvent(payload: QqbotPayload<unknown>): Promise<void> {
-    this.logger.debug(
-      `QQ callback event received: op=${payload.op}, type=${payload.t || '-'}`,
-    );
     if (payload.op !== 0) {
-      this.logger.debug(
+      this.logger.error(
         `QQ callback event ignored: unsupported op=${payload.op}`,
       );
       return;
@@ -42,7 +39,7 @@ export class QqbotCallbackService {
       payload.t !== 'GROUP_AT_MESSAGE_CREATE' &&
       payload.t !== 'C2C_MESSAGE_CREATE'
     ) {
-      this.logger.debug(
+      this.logger.error(
         `QQ callback event ignored: unsupported type=${payload.t || '-'}`,
       );
       return;
@@ -52,7 +49,7 @@ export class QqbotCallbackService {
       event.message_scene?.ext?.find((item) => item.startsWith('msg_idx=')) ||
       event.id;
     if (this.deduplicator.isDuplicate(eventKey)) {
-      this.logger.debug(`QQ callback duplicate event ignored: key=${eventKey}`);
+      this.logger.warn(`QQ callback duplicate event ignored: key=${eventKey}`);
       return;
     }
 

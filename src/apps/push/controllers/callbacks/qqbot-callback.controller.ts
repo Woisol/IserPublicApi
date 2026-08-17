@@ -26,12 +26,10 @@ export class QqbotCallbackController {
     const timestamp = request.headers['x-signature-timestamp'] as
       | string
       | undefined;
-    const callbackAppId = request.headers['x-bot-appid'] as string | undefined;
+    // const callbackAppId = request.headers['x-bot-appid'] as string | undefined;
 
     this.logger.debug(
-      `QQ callback received: path=${request.path}, bodyBytes=${rawBody.length}, ` +
-        `hasSignature=${Boolean(signature)}, hasTimestamp=${Boolean(timestamp)}, ` +
-        `callbackAppId=${callbackAppId || '-'}, configuredAppId=${process.env.QQBOT_APP_ID || '-'}`,
+      `QQ callback received: bodyBytes=${rawBody.length}, configuredAppId=${process.env.QQBOT_APP_ID || '-'}`,
     );
 
     let payload: {
@@ -66,11 +64,11 @@ export class QqbotCallbackController {
             validation.plain_token,
           ),
         };
-        this.logger.debug(
-          `QQ callback validation response generated: ` +
-            `signatureLength=${result.signature.length}, ` +
-            `signatureFingerprint=${result.signature.slice(0, 12)}`,
-        );
+        // this.logger.debug(
+        //   `QQ callback validation response generated: ` +
+        //     `signatureLength=${result.signature.length}, ` +
+        //     `signatureFingerprint=${result.signature.slice(0, 12)}`,
+        // );
         return response.status(200).json(result);
       } catch (error) {
         this.logger.error('QQ callback validation failed:', error);
@@ -85,18 +83,18 @@ export class QqbotCallbackController {
       rawBody,
       signature || '',
     );
-    this.logger.debug(`QQ callback signature valid: ${signatureValid}`);
+    // this.logger.debug(`QQ callback signature valid: ${signatureValid}`);
     if (!signatureValid) {
       this.logger.warn('QQ callback rejected because signature is invalid');
       return response.status(401).json({ message: 'Invalid QQ Bot signature' });
     }
 
-    this.logger.debug('QQ callback ACK sent');
+    // this.logger.debug('QQ callback ACK sent');
     response.status(200).json({ op: 12 });
     if (payload.op === 0) {
       try {
         await this.callbackService.handleEvent(payload);
-        this.logger.debug('QQ callback event handled');
+        // this.logger.debug('QQ callback event handled');
       } catch (error) {
         this.logger.error('QQ callback event handling failed:', error);
       }
