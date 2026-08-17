@@ -1,8 +1,19 @@
 import { Injectable } from '@nestjs/common';
-import { createPrivateKey, createPublicKey, sign, verify } from 'crypto';
+import {
+  createHash,
+  createPrivateKey,
+  createPublicKey,
+  sign,
+  verify,
+} from 'crypto';
 
 @Injectable()
 export class QqbotSignatureService {
+  getSecretFingerprint(): string {
+    const secret = process.env.QQBOT_APP_SECRET || '';
+    return createHash('sha256').update(secret).digest('hex').slice(0, 12);
+  }
+
   verify(timestamp: string, body: Buffer, signature: string): boolean {
     const secret = process.env.QQBOT_APP_SECRET;
     if (!secret || !timestamp || !signature) return false;

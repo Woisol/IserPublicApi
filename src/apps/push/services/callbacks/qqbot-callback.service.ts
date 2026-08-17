@@ -28,18 +28,33 @@ export class QqbotCallbackService {
   }
 
   async handleEvent(payload: QqbotPayload<unknown>): Promise<void> {
-    if (payload.op !== 0) return;
+    this.logger.debug(
+      `QQ callback event received: op=${payload.op}, type=${payload.t || '-'}`,
+    );
+    if (payload.op !== 0) {
+      this.logger.debug(
+        `QQ callback event ignored: unsupported op=${payload.op}`,
+      );
+      return;
+    }
     if (
       payload.t !== 'GROUP_MESSAGE_CREATE' &&
       payload.t !== 'GROUP_AT_MESSAGE_CREATE' &&
       payload.t !== 'C2C_MESSAGE_CREATE'
-    )
+    ) {
+      this.logger.debug(
+        `QQ callback event ignored: unsupported type=${payload.t || '-'}`,
+      );
       return;
+    }
     const event = payload.d as QqbotGroupMessageEvent | QqbotC2cMessageEvent;
     const eventKey =
       event.message_scene?.ext?.find((item) => item.startsWith('msg_idx=')) ||
       event.id;
-    if (this.deduplicator.isDuplicate(eventKey)) return;
+    if (this.deduplicator.isDuplicate(eventKey)) {
+      this.logger.debug(`QQ callback duplicate event ignored: key=${eventKey}`);
+      return;
+    }
 
     const isGroup =
       payload.t === 'GROUP_MESSAGE_CREATE' ||
@@ -68,19 +83,24 @@ export class QqbotCallbackService {
       rawEvent: event,
     };
     this.logger.debug(
-      `QQ callback OpenID: ${
+      `QQ callback command context: ${
         isGroup
-          ? `group=${(event as QqbotGroupMessageEvent).group_openid}`
-          : `user=${(event as QqbotC2cMessageEvent).author.user_openid}`
+          ? `source=group, groupOpenid=${(event as QqbotGroupMessageEvent).group_openid}`
+          : `source=user, userOpenid=${(event as QqbotC2cMessageEvent).author.user_openid}`
       }`,
     );
     const reply = await this.commandRouter.route(context);
+    this.logger.debug(
+      `QQ callback command routed: commandText=${JSON.stringify(context.commandText)}, ` +
+        `hasReply=${Boolean(reply)}`,
+    );
     if (reply) {
       await this.messageService.sendText(context.target, reply, {
         messageId: context.messageId,
         eventId: context.eventId,
         msgSeq: context.msgSeq,
       });
+      this.logger.debug('QQ callback reply sent');
     }
   }
 }
