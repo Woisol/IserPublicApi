@@ -67,7 +67,7 @@ export interface WeatherMonitorConfig {
 
 export interface WeatherAlertResult {
   shouldAlert: boolean;
-  message?: string;
+  details?: import('../push-message').WeatherPushDetails;
   time?: Date;
 }
 

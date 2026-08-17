@@ -59,9 +59,9 @@ export class WeatherService implements OnModuleInit {
     try {
       const result = await this.checkMinutelyRainForecast();
       this.logger.info('Minutely rain forecast result:', result);
-      if (result.shouldAlert && result.message) {
-        await this.sendRainAlert(result.message);
-        this.logger.log(`Minutely rain alert sent: ${result.message}`);
+      if (result.shouldAlert && result.details) {
+        await this.sendRainAlert(result.details);
+        this.logger.log('Minutely rain alert sent');
       }
     } catch (error) {
       this.logger.error('Failed to check minutely rain forecast:', error);
@@ -79,9 +79,9 @@ export class WeatherService implements OnModuleInit {
 
     try {
       const result = await this.checkDailyRainForecast();
-      if (result.shouldAlert && result.message) {
-        await this.sendRainAlert(result.message);
-        this.logger.log(`Daily rain alert sent: ${result.message}`);
+      if (result.shouldAlert && result.details) {
+        await this.sendRainAlert(result.details);
+        this.logger.log('Daily rain alert sent');
       }
     } catch (error) {
       this.logger.error('Failed to check daily rain forecast:', error);
@@ -120,33 +120,25 @@ export class WeatherService implements OnModuleInit {
         };
       }
 
-      // 计算距离第一次降雨的时间
       const firstRainTime = new Date(rainPoints[0].fxTime);
-      const minutesUntilRain = Math.max(
-        Math.round((firstRainTime.getTime() - now.getTime()) / (1000 * 60)),
-        0,
-      );
-
       const peakRainPoint = rainPoints.reduce((currentPeak, item) =>
         parseFloat(item.precip) > parseFloat(currentPeak.precip)
           ? item
           : currentPeak,
       );
       const maxPrecip = parseFloat(peakRainPoint.precip);
-      const peakRainTimeText = this.formatHourMinute(
-        new Date(peakRainPoint.fxTime),
-      );
-      const precipTimeline = rainPoints
-        .map((point) => `${parseFloat(point.precip).toFixed(2)}mm`)
-        .join('|');
-
-      const message = `⚠️ 预计 ${minutesUntilRain}min 后开始下雨
-预报降雨量 ${precipTimeline}，峰值 ${maxPrecip.toFixed(2)}mm/5min（${peakRainTimeText}）`;
-
       return {
         shouldAlert: true,
-        message,
         time: firstRainTime,
+        details: {
+          kind: 'minutely-rain',
+          startsAt: firstRainTime,
+          precipitationTimeline: rainPoints.map((point) =>
+            parseFloat(point.precip),
+          ),
+          peakPrecipitation: maxPrecip,
+          peakAt: new Date(peakRainPoint.fxTime),
+        },
       };
     } catch (error) {
       this.logger.error('Error checking minutely rain forecast:', error);
@@ -185,28 +177,17 @@ export class WeatherService implements OnModuleInit {
         return { shouldAlert: false };
       }
 
-      // 构建降雨时间段描述
       const rainPeriods = this.groupConsecutiveRainHours(rainHours);
-      const timeDescription = rainPeriods
-        .map((period) => {
-          if (period.length === 1) {
-            return `${new Date(period[0].fxTime).getHours()}点`;
-          } else {
-            const startHour = new Date(period[0].fxTime).getHours();
-            const endHour = new Date(
-              period[period.length - 1].fxTime,
-            ).getHours();
-            return `${startHour}-${endHour}点`;
-          }
-        })
-        .join('、');
-
-      const message = `⚠️ 今天${timeDescription}可能下雨`;
-
       return {
         shouldAlert: true,
-        message,
         time: new Date(rainHours[0].fxTime),
+        details: {
+          kind: 'daily-rain',
+          periods: rainPeriods.map((period) => ({
+            startTime: new Date(period[0].fxTime),
+            endTime: new Date(period[period.length - 1].fxTime),
+          })),
+        },
       };
     } catch (error) {
       this.logger.error('Error checking daily rain forecast:', error);
@@ -312,12 +293,14 @@ export class WeatherService implements OnModuleInit {
   /**
    * 发送天气预警消息
    */
-  private async sendRainAlert(message: string) {
+  private async sendRainAlert(
+    details: import('@app/apps/push/types/push-message').WeatherPushDetails,
+  ) {
     try {
       await this.pushService.sendMessage(
         'weather',
         { wxwork: 'weather' },
-        { message },
+        details,
       );
     } catch (error) {
       this.logger.error('Failed to send rain alert:', error);
@@ -354,9 +337,5 @@ export class WeatherService implements OnModuleInit {
    */
   get config(): WeatherMonitorConfig {
     return { ...this._config };
-  }
-
-  private formatHourMinute(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
   }
 }

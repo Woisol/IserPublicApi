@@ -10,7 +10,6 @@ import {
   findGameLogFetchConfig,
   gameName2GameChannel,
 } from './game-daily.util';
-import type { GameDailyPushDetails } from '@app/apps/push/types/push-message';
 import { exec } from 'child_process';
 
 /**
@@ -26,7 +25,7 @@ export class PushApplicationsGameDailyService {
   private readonly logger = new CompactLogger(
     PushApplicationsGameDailyService.name,
   );
-  // 先硬编码了，@todo 使用配置文件
+  // TODO 先硬编码了，@todo 使用配置文件
   private GAMELOGFETCH: GameLogFetchRawOption[] = [
     {
       gameName: 'Genshin',
@@ -93,17 +92,11 @@ export class PushApplicationsGameDailyService {
         return 'success';
       } else {
         this.logger.error(`唤醒失败`);
-        const message: GameDailyPushDetails = {
-          type: 'Wakeup',
-          title: '❌ 电脑唤醒失败',
-          content: ['⚠️ <font color="warning" > 请及时检查并修复问题 </font>'],
-        };
         void this.pushService.sendMessage(
           'game-daily',
           { wxwork: 'general' },
-          message,
+          { wakeupSuccessful: false },
         );
-        return message;
       }
     });
   }
@@ -120,51 +113,54 @@ export class PushApplicationsGameDailyService {
     const today = new Date();
     const gameChannel = gameName2GameChannel(gameName);
 
-    let message: GameDailyPushDetails;
-
     try {
       const game = findGameLogFetchConfig(this.GAMELOGFETCH, gameName, today);
       const logRes: GameLogFetchResult = await this._fetchGameLog(game);
 
       if (!logRes.querySuccess) {
         this.logger.error(`无法获取 ${gameName} 的日志`);
-        message = {
-          title: `⚠️ ${gameName} 每日完成情况获取失败`,
-          content: [{ 详情: '无法获取日志' }],
+        const details = {
+          gameName,
+          status: 'failed' as const,
+          detail: [],
+          failureReason: '无法获取日志',
         };
         await this.pushService.sendMessage(
           'game-daily',
           { wxwork: gameChannel },
-          message,
+          details,
         );
-        return message;
+        return details;
       }
 
-      message = {
-        title: logRes.dailyCompleted
-          ? `✅ ${gameName} 每日任务已完成`
-          : `❌ ${gameName} 每日任务未完成`,
-        content: logRes.details,
+      const details = {
+        gameName,
+        status: logRes.dailyCompleted
+          ? ('finished' as const)
+          : ('unfinished' as const),
+        detail: logRes.details,
       };
       await this.pushService.sendMessage(
         'game-daily',
         { wxwork: gameChannel },
-        message,
+        details,
       );
       this.logger.info('已发送每日任务情况通知');
-      return message;
+      return details;
     } catch (error) {
       this.logger.error(error);
-      message = {
-        title: `⚠️ ${gameName} 每日完成情况获取失败`,
-        content: [{ 详情: error.message as string }],
+      const details = {
+        gameName,
+        status: 'failed' as const,
+        detail: [],
+        failureReason: error instanceof Error ? error.message : '未知错误',
       };
       await this.pushService.sendMessage(
         'game-daily',
         { wxwork: gameChannel },
-        message,
+        details,
       );
-      return message;
+      return details;
     }
   }
 

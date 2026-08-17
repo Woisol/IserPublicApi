@@ -1,65 +1,43 @@
 import { Injectable } from '@nestjs/common';
 import { PushService } from '../../push.service';
-import { CompactLogger } from '@app/common/utils/logger';
-import type { McServerPushDetails } from '@app/apps/push/types/push-message';
-import { formatMcServerPlayerList } from './mcserver.util';
 
 @Injectable()
 export class McServerService {
-  private readonly logger = new CompactLogger(McServerService.name);
   constructor(private readonly pushService: PushService) {}
   sendServerStart() {
-    const msg = '「Server」✅服务器启动成功';
-    this._sendMarkdownToChannel(msg);
-  }
-
-  sendServerStop() {
-    const msg = '「Server」❌服务器已关闭';
-    this._sendMarkdownToChannel(msg);
-  }
-
-  sendPlayerJoin(playerName: string, curPlayers: string[]) {
-    const msg: McServerPushDetails = {
-      type: 'Player',
-      title: `🎮 <font color="info">${playerName} 加入了服务器</font>`,
-      content: [
-        { 当前在线: `${curPlayers.length}人` },
-        {
-          玩家列表: formatMcServerPlayerList(curPlayers),
-        },
-      ],
-    };
-    this._sendMarkdownInfoToChannel(msg);
-  }
-
-  sendPlayerLeave(playerName: string, curPlayers: string[], playTime?: string) {
-    const msg: McServerPushDetails = {
-      type: 'Player',
-      title: `👋 <font color="warning">${playerName} 离开了服务器</font>`,
-      content: [
-        { 游玩时长: playTime ? playTime : '未知' },
-        { 当前在线: `${curPlayers.length}人` },
-        {
-          玩家列表: formatMcServerPlayerList(curPlayers),
-        },
-      ],
-    };
-    this._sendMarkdownInfoToChannel(msg);
-  }
-
-  private _sendMarkdownToChannel(markdown: string) {
     void this.pushService.sendMessage(
       'mcserver',
       { wxwork: 'mcserver' },
-      { title: '', content: [], markdown },
+      { event: 'server_started' },
     );
   }
 
-  private _sendMarkdownInfoToChannel(details: McServerPushDetails) {
+  sendServerStop() {
     void this.pushService.sendMessage(
       'mcserver',
       { wxwork: 'mcserver' },
-      details,
+      { event: 'server_stopped' },
+    );
+  }
+
+  sendPlayerJoin(playerName: string, curPlayers: string[]) {
+    void this.pushService.sendMessage(
+      'mcserver',
+      { wxwork: 'mcserver' },
+      { event: 'player_joined', playerName, currentPlayers: curPlayers },
+    );
+  }
+
+  sendPlayerLeave(playerName: string, curPlayers: string[], playTime?: string) {
+    void this.pushService.sendMessage(
+      'mcserver',
+      { wxwork: 'mcserver' },
+      {
+        event: 'player_left',
+        playerName,
+        currentPlayers: curPlayers,
+        playTime,
+      },
     );
   }
 }

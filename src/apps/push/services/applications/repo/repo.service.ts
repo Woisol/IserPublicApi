@@ -3,31 +3,25 @@
  * 微信进企微全员群以后不要退出会导致企微本体也退出()
  */
 import { Injectable } from '@nestjs/common';
-import {
+import type {
   GitHubWebhookPayload,
-  MemberWebhookPayload,
   IssuesWebhookPayload,
+  MemberWebhookPayload,
   ReleaseWebhookPayload,
-  WorkflowRunWebhookPayload,
   WebhookProcessResult,
+  WorkflowRunWebhookPayload,
 } from '@app/apps/push/types/applications/repo';
 import { GitHubWebhookEvent } from '@app/apps/push/types/applications/repo.runtime';
-import type { RepoPushDetails } from '@app/apps/push/types/push-message';
 import { PushService } from '../../push.service';
 import { CompactLogger } from '@app/common/utils/logger';
-import { shorttenGitMessage } from './repo.util';
 
 @Injectable()
 export class PushApplicationsRepoService {
   /** 与 GitHub Repo 通知相关的逻辑 */
   private readonly logger = new CompactLogger(PushApplicationsRepoService.name);
+
   constructor(private readonly pushService: PushService) {}
 
-  /**
-   * 处理 GitHub Webhook 事件
-   * @param event Webhook 事件类型
-   * @param payload Webhook 载荷数据
-   */
   processWebhookEvent(
     event: GitHubWebhookEvent,
     payload: GitHubWebhookPayload,
@@ -37,349 +31,126 @@ export class PushApplicationsRepoService {
     try {
       switch (event) {
         case GitHubWebhookEvent.MEMBER:
-          return this._handleMemberEvent(payload as MemberWebhookPayload);
-
+          return this.handleMemberEvent(payload as MemberWebhookPayload);
         case GitHubWebhookEvent.ISSUES:
-          return this._handleIssuesEvent(payload as IssuesWebhookPayload);
-
+          return this.handleIssuesEvent(payload as IssuesWebhookPayload);
         case GitHubWebhookEvent.RELEASE:
-          return this._handleReleaseEvent(payload as ReleaseWebhookPayload);
-
+          return this.handleReleaseEvent(payload as ReleaseWebhookPayload);
         case GitHubWebhookEvent.WORKFLOW_RUN:
-          return this._handleWorkflowRunEvent(
+          return this.handleWorkflowRunEvent(
             payload as WorkflowRunWebhookPayload,
           );
-
-        default: {
-          const eventType = event as string;
+        default:
           return {
             success: false,
-            message: `Unsupported event type: ${eventType}`,
+            message: `Unsupported event type: ${event as string}`,
             event,
           };
-        }
       }
     } catch (error) {
-      const errorMessage =
-        error instanceof Error ? error.message : 'Unknown error';
-      this.logger.error(`Error processing webhook: ${errorMessage}`, error);
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error processing webhook: ${message}`, error);
       return {
         success: false,
-        message: `Failed to process webhook: ${errorMessage}`,
+        message: `Failed to process webhook: ${message}`,
         event,
         action: payload.action,
       };
     }
   }
 
-  /**
-   * 处理协作者事件（添加、删除或更改权限）
-   */
-  private _handleMemberEvent(
+  private handleMemberEvent(
     payload: MemberWebhookPayload,
   ): WebhookProcessResult {
-    const { action, member, repository, changes } = payload;
-
-    let markdownInfo: RepoPushDetails;
-
-    switch (action) {
-      case 'added':
-        markdownInfo = {
-          type: 'Collaborate',
-          title: `新增协作者 <font color="info">${member.login}</font>`,
-          content: [{ 仓库: `[${repository.name}](${repository.html_url})` }],
-        };
-        break;
-
-      case 'removed':
-        markdownInfo = {
-          type: 'Collaborate',
-          title: `移除协作者 <font color="warning">${member.login}</font>`,
-          content: [{ 仓库: `[${repository.name}](${repository.html_url})` }],
-        };
-        break;
-
-      case 'edited': {
-        const oldPermission = changes?.permission?.from || '未知';
-        const newPermission = changes?.permission?.to || '未知';
-        markdownInfo = {
-          type: 'Collaborate',
-          title: '权限变更',
-          content: [
-            { 仓库: `[${repository.name}](${repository.html_url})` },
-            { 成员: member.login },
-            { 变更: `${oldPermission} → ${newPermission}` },
-          ],
-        };
-        break;
-      }
-
-      default:
-        markdownInfo = {
-          type: 'Collaborate',
-          title: '未知操作',
-          content: [{ 操作类型: action }],
-        };
-    }
-
-    this.sendStructuredNotification(markdownInfo, payload);
-
+    this.sendNotification(GitHubWebhookEvent.MEMBER, payload);
     return {
       success: true,
-      message: `Member event processed: ${action}`,
+      message: `Member event processed: ${payload.action}`,
       event: GitHubWebhookEvent.MEMBER,
-      action,
-      data: { member: member.login, repository: repository.full_name },
+      action: payload.action,
+      data: {
+        member: payload.member.login,
+        repository: payload.repository.full_name,
+      },
     };
   }
 
-  /**
-   * 处理 Issue 事件
-   */
-  private _handleIssuesEvent(
+  private handleIssuesEvent(
     payload: IssuesWebhookPayload,
   ): WebhookProcessResult {
-    const { action, issue, repository, sender } = payload;
-
-    let markdownInfo: RepoPushDetails;
-    const issueUrl = issue.html_url;
-
-    switch (action) {
-      case 'opened':
-        markdownInfo = {
-          type: 'Issue',
-          title: '新建 Issue',
-          content: [
-            { 标题: `[#${issue.number} ${issue.title}](${issueUrl})` },
-            { 仓库: `[${repository.full_name}](${repository.html_url})` },
-            { 创建者: sender.login },
-            { 创建时间: new Date(issue.created_at).toLocaleString('zh-CN') },
-            ...(issue.body
-              ? [
-                  {
-                    描述:
-                      issue.body.substring(0, 200) +
-                      (issue.body.length > 200 ? '...' : ''),
-                  },
-                ]
-              : []),
-          ],
-        };
-        break;
-
-      default:
-        markdownInfo = {
-          type: 'Issue',
-          title: `${action} Issue`,
-          content: [
-            { 标题: `[#${issue.number} ${issue.title}](${issueUrl})` },
-            { 仓库: `[${repository.full_name}](${repository.html_url})` },
-            { 操作者: sender.login },
-            { 操作时间: new Date().toLocaleString('zh-CN') },
-          ],
-        };
-    }
-
-    this.sendStructuredNotification(markdownInfo, payload);
-
+    this.sendNotification(GitHubWebhookEvent.ISSUES, payload);
     return {
       success: true,
-      message: `Issues event processed: ${action}`,
+      message: `Issues event processed: ${payload.action}`,
       event: GitHubWebhookEvent.ISSUES,
-      action,
+      action: payload.action,
       data: {
-        issue_number: issue.number,
-        issue_title: issue.title,
-        repository: repository.full_name,
+        issue_number: payload.issue.number,
+        issue_title: payload.issue.title,
+        repository: payload.repository.full_name,
       },
     };
   }
 
-  /**
-   * 处理 Release 事件
-   */
-  private _handleReleaseEvent(
+  private handleReleaseEvent(
     payload: ReleaseWebhookPayload,
   ): WebhookProcessResult {
-    const { action, release, repository } = payload;
-
-    let markdownInfo: RepoPushDetails;
-    const releaseUrl = release.html_url;
-
-    switch (action) {
-      case 'published':
-        markdownInfo = {
-          type: 'Release',
-          title: `<font color="info">[${release.tag_name}](${releaseUrl})</font> 发布`,
-          content: [
-            { 版本名称: release.name || release.tag_name },
-            { 仓库: `[${repository.name}](${repository.html_url})` },
-            {
-              发布时间: new Date(
-                release.published_at || Date.now(),
-              ).toLocaleString('zh-CN'),
-            },
-            ...(release.body
-              ? [
-                  {
-                    发布说明:
-                      release.body.substring(0, 300) +
-                      (release.body.length > 300 ? '...' : ''),
-                  },
-                ]
-              : []),
-          ],
-        };
-        break;
-
-      default:
-        markdownInfo = {
-          type: 'Release',
-          title: `${action} Release`,
-          content: [
-            { 版本: `[${release.tag_name}](${releaseUrl})` },
-            { 仓库: `[${repository.name}](${repository.html_url})` },
-            { 操作时间: new Date().toLocaleString('zh-CN') },
-          ],
-        };
-    }
-
-    this.sendStructuredNotification(markdownInfo, payload);
-
+    this.sendNotification(GitHubWebhookEvent.RELEASE, payload);
     return {
       success: true,
-      message: `Release event processed: ${action}`,
+      message: `Release event processed: ${payload.action}`,
       event: GitHubWebhookEvent.RELEASE,
-      action,
+      action: payload.action,
       data: {
-        tag_name: release.tag_name,
-        release_name: release.name,
-        repository: repository.name,
+        tag_name: payload.release.tag_name,
+        release_name: payload.release.name,
+        repository: payload.repository.name,
       },
     };
   }
 
-  /**
-   * 处理 Workflow 运行事件
-   */
-  private _handleWorkflowRunEvent(
+  private handleWorkflowRunEvent(
     payload: WorkflowRunWebhookPayload,
   ): WebhookProcessResult {
-    const { action, workflow_run, repository } = payload;
-
-    // 只处理已完成的工作流
-    if (action !== 'completed') {
+    if (payload.action !== 'completed') {
       return {
         success: true,
-        message: `Workflow action ignored: ${action}`,
+        message: `Workflow action ignored: ${payload.action}`,
         event: GitHubWebhookEvent.WORKFLOW_RUN,
-        action,
+        action: payload.action,
       };
     }
 
-    let message: RepoPushDetails;
-    const workflowUrl = workflow_run.html_url;
-    const conclusion = workflow_run.conclusion;
-
-    const commitMessage = shorttenGitMessage(workflow_run.head_commit.message);
-
-    const duration =
-      workflow_run.run_started_at && workflow_run.updated_at
-        ? Math.round(
-            (new Date(workflow_run.updated_at).getTime() -
-              new Date(workflow_run.run_started_at).getTime()) /
-              1000,
-          )
-        : 0;
-
-    const durationText =
-      duration > 0
-        ? `${Math.floor(duration / 60)}分${duration % 60}秒`
-        : '未知';
-
-    if (conclusion === 'success') {
-      message = {
-        type: 'Workflow',
-        title: `✅ [${workflow_run.name} ](${workflowUrl}) 执行成功`,
-        content: [
-          { 提交: commitMessage },
-          { 仓库: `[${repository.name}](${repository.html_url})` },
-          { 分支: `\`${workflow_run.head_branch}\`` },
-          { 执行时长: durationText },
-        ],
-      };
-    } else if (conclusion === 'failure') {
-      message = {
-        type: 'Workflow',
-        title: `❌ [${workflow_run.name}](${workflowUrl}) 执行失败`,
-        content: [
-          { 提交: commitMessage },
-          { 仓库: `[${repository.name}](${repository.html_url})` },
-          { 分支: `\`${workflow_run.head_branch}\`` },
-          { 执行时长: durationText },
-          `⚠️ <font color="warning">请及时检查并修复问题</font>`,
-        ],
-      };
-    }
-    //     else {
-    //       // 其他状态如 cancelled, skipped 等
-    //       const statusEmoji =
-    //         {
-    //           cancelled: '🚫',
-    //           skipped: '⏭️',
-    //           neutral: '➖',
-    //           timed_out: '⏰',
-    //           action_required: '🔔',
-    //         }[conclusion] || '❓';
-
-    //       const statusText =
-    //         {
-    //           cancelled: '已取消',
-    //           skipped: '已跳过',
-    //           neutral: '中性',
-    //           timed_out: '超时',
-    //           action_required: '需要操作',
-    //         }[conclusion] || conclusion;
-
-    //       message = `## ${statusEmoji} 工作流${statusText}
-    // > 工作流： [${workflow_run.name}](${workflowUrl})
-    // > 仓库： [${repository.full_name}](${repository.html_url})
-    // > 分支： \`${workflow_run.head_branch}\`
-    // > 触发者： ${workflow_run.actor.login}
-    // > 状态： ${statusEmoji} ${statusText}
-    // > 时间： ${new Date(workflow_run.updated_at).toLocaleString('zh-CN')}`;
-    //     }
-
-    this.sendStructuredNotification(message);
-
+    this.sendNotification(GitHubWebhookEvent.WORKFLOW_RUN, payload);
     return {
       success: true,
-      message: `Workflow run event processed: ${conclusion}`,
+      message: `Workflow run event processed: ${payload.workflow_run.conclusion}`,
       event: GitHubWebhookEvent.WORKFLOW_RUN,
-      action,
+      action: payload.action,
       data: {
-        workflow_name: workflow_run.name,
-        conclusion,
-        branch: workflow_run.head_branch,
-        repository: repository.full_name,
+        workflow_name: payload.workflow_run.name,
+        conclusion: payload.workflow_run.conclusion,
+        branch: payload.workflow_run.head_branch,
+        repository: payload.repository.full_name,
       },
     };
   }
 
-  /**
-   * 发送结构化 Markdown 通知消息
-   */
-  private sendStructuredNotification(
-    details: RepoPushDetails,
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
-    _payload?: GitHubWebhookPayload,
+  private sendNotification(
+    event: GitHubWebhookEvent,
+    payload: GitHubWebhookPayload,
   ): void {
-    void this.pushService.sendMessage('repo', { wxwork: 'repo' }, details);
+    void this.pushService.sendMessage(
+      'repo',
+      { wxwork: 'repo' },
+      {
+        event,
+        payload,
+        receivedAt: new Date(),
+      },
+    );
   }
 
-  /**
-   * 验证 GitHub Webhook 签名
-   */
   verifyWebhookSignature(
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _payload: string,

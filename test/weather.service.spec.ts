@@ -39,7 +39,7 @@ describe('WeatherService', () => {
     process.env = originalEnv;
   });
 
-  it('alerts for short but intense rain and includes peak time in the message', async () => {
+  it('returns minutely rain facts without constructing a display message', async () => {
     const fetchMock = global.fetch as jest.Mock;
     fetchMock.mockResolvedValue({
       ok: true,
@@ -86,9 +86,12 @@ describe('WeatherService', () => {
     ).checkMinutelyRainForecast();
 
     expect(result.shouldAlert).toBe(true);
-    expect(result.message).toContain('25min');
-    expect(result.message).toContain('0.80mm|1.50mm');
-    expect(result.message).toContain('10:30');
-    expect(result.message).not.toContain('概率');
+    expect(result.details).toEqual({
+      kind: 'minutely-rain',
+      startsAt: new Date('2026-03-31T10:25:00+08:00'),
+      precipitationTimeline: [0.8, 1.5],
+      peakPrecipitation: 1.5,
+      peakAt: new Date('2026-03-31T10:30:00+08:00'),
+    });
   });
 });

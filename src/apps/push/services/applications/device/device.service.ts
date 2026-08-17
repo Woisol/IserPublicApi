@@ -4,7 +4,6 @@
  */
 import { Injectable } from '@nestjs/common';
 import { PushService } from '../../push.service';
-import type { DevicePushDetails } from '@app/apps/push/types/push-message';
 import * as os from 'os';
 import { CompactLogger } from '@app/common/utils/logger';
 import { execFile } from 'child_process';
@@ -269,50 +268,29 @@ export class DeviceMonitorService {
     const cpuUsage = +this.avgUsage.toFixed(2);
     const memUsage = +systemInfo.memoryUsage.toFixed(2);
     const highCpuApplications = await this.getHighCpuApplications();
-    const applicationDetails = highCpuApplications.length
-      ? Object.fromEntries(
-          highCpuApplications.map((application) => [
-            `${application.name} (PID ${application.pid})`,
-            `${application.usage.toFixed(2)}%`,
-          ]),
-        )
-      : {
-          状态: `未发现 CPU 占用率超过 ${this.highCpuApplicationThreshold}% 的应用`,
-        };
-
-    const markdownInfo: DevicePushDetails = {
-      type: 'Device',
-      title:
-        cpuUsage > this.extremeCpuThreshold
-          ? '⚠️`CPU 负载严重过高！`⚠️'
-          : '<font color="warning">CPU 高负载预警！</font>',
-      content: [
-        {
-          使用率:
-            cpuUsage > this.extremeCpuThreshold
-              ? `\`${cpuUsage}%\``
-              : `${cpuUsage}%`,
-        },
-        { 检测时间: new Date().toLocaleString('zh-CN') },
-        {
-          系统信息: {
-            内存占用:
-              memUsage > this.extremeMemThreshold
-                ? `\`${memUsage}%\``
-                : memUsage > this.warningMemThreshold
-                  ? `<font color="warning">${memUsage}%</font>`
-                  : `${memUsage}%`,
-            已运行时间: systemInfo.uptime,
-            系统: systemInfo.platform,
-            CPU: systemInfo.cpuModel,
-            核心数: systemInfo.cpuCount.toString(),
-          },
-        },
-        { '高 CPU 应用': applicationDetails },
-      ],
-    };
-
-    this.sendStructuredNotification(markdownInfo);
+    void this.pushService.sendMessage(
+      'device',
+      { wxwork: 'monitor' },
+      {
+        cpuUsage,
+        cpuSeverity:
+          cpuUsage > this.extremeCpuThreshold ? 'critical' : 'warning',
+        memoryUsage: memUsage,
+        memorySeverity:
+          memUsage > this.extremeMemThreshold
+            ? 'critical'
+            : memUsage > this.warningMemThreshold
+              ? 'warning'
+              : 'normal',
+        checkedAt: new Date(),
+        platform: systemInfo.platform,
+        cpuModel: systemInfo.cpuModel,
+        cpuCount: systemInfo.cpuCount,
+        uptimeSeconds: os.uptime(),
+        highCpuApplications,
+        highCpuApplicationThreshold: this.highCpuApplicationThreshold,
+      },
+    );
   }
 
   /**
@@ -465,16 +443,6 @@ export class DeviceMonitorService {
     if (bytes === 0) return '0 Bytes';
     const i = Math.floor(Math.log(bytes) / Math.log(1024));
     return Math.round((bytes / Math.pow(1024, i)) * 100) / 100 + ' ' + sizes[i];
-  }
-
-  /**
-   * 发送结构化 Markdown 通知消息
-   */
-  private sendStructuredNotification(details: DevicePushDetails): void {
-    // this.logger.log(`发送结构化设备监控通知: ${markdownInfo.title}`);
-
-    // 使用 void 操作符忽略 Promise
-    void this.pushService.sendMessage('device', { wxwork: 'monitor' }, details);
   }
 
   //   /**
