@@ -10,6 +10,7 @@ if (existsSync('.env')) {
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
     logger: new CompactLogger(),
+    rawBody: true,
   });
   const port = process.env.SERVER_PORT || 3000;
   await app.listen(port);

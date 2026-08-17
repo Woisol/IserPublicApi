@@ -5,6 +5,7 @@ import type {
   GameDailyPushDetails,
   McServerPushDetails,
   PushChannels,
+  PushChannelTarget,
   PushMessageDetailsMap,
   PushMessageType,
   RepoPushDetails,
@@ -108,7 +109,7 @@ export class PushService {
   private getChannel(
     type: PushMessageType,
     channels: PushChannels | undefined,
-  ): string | undefined {
+  ): PushChannelTarget | undefined {
     const channel = channels?.[this.sendAdapter];
     if (!channel) {
       this.logger.error(

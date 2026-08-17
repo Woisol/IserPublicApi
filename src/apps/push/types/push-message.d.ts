@@ -6,7 +6,19 @@ import type { WeatherRainPeriod } from './applications/weather';
 
 export type PushChannel = 'wxwork' | 'qqbot';
 
-export type PushChannels = Partial<Record<PushChannel, string>>;
+export type QqbotChannel =
+  | string
+  | {
+      type: 'group' | 'user' | 'guild-channel';
+      id: string;
+    };
+
+export type PushChannelTarget = string | QqbotChannel;
+
+export type PushChannels = Partial<{
+  wxwork: string;
+  qqbot: QqbotChannel;
+}>;
 
 export type GameDailyPushDetails =
   | {

@@ -4,6 +4,7 @@ import type {
   DevicePushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
+  PushChannelTarget,
   RepoPushDetails,
   WeatherPushDetails,
 } from '@app/apps/push/types/push-message';
@@ -38,12 +39,13 @@ export class WxworkAdapter implements PushAdapter {
   }
 
   async sendGameDaily(
-    channel: string,
+    channel: PushChannelTarget,
     details: GameDailyPushDetails,
   ): Promise<void> {
+    const target = this.normalizeChannel(channel);
     if (details.wakeupSuccessful === false) {
       await this.send(
-        channel,
+        target,
         this.builder.markdownInfo({
           type: 'Wakeup',
           title: '❌ 电脑唤醒失败',
@@ -64,13 +66,14 @@ export class WxworkAdapter implements PushAdapter {
         ? [{ 详情: details.failureReason || '无法获取日志' }]
         : details.detail;
 
-    await this.send(channel, this.builder.markdownInfo({ title, content }));
+    await this.send(target, this.builder.markdownInfo({ title, content }));
   }
 
   async sendWeather(
-    channel: string,
+    channel: PushChannelTarget,
     details: WeatherPushDetails,
   ): Promise<void> {
+    const target = this.normalizeChannel(channel);
     if (details.kind === 'minutely-rain') {
       const minutesUntilRain = Math.max(
         Math.round((details.startsAt.getTime() - Date.now()) / 60000),
@@ -81,7 +84,7 @@ export class WxworkAdapter implements PushAdapter {
         .join('|');
       const peakAt = this.formatHourMinute(details.peakAt);
       await this.send(
-        channel,
+        target,
         this.builder.text(
           `⚠️ 预计 ${minutesUntilRain}min 后开始下雨\n预报降雨量 ${timeline}，峰值 ${details.peakPrecipitation.toFixed(2)}mm/5min（${peakAt}）`,
         ),
@@ -98,10 +101,14 @@ export class WxworkAdapter implements PushAdapter {
           : `${startHour}-${endHour}点`;
       })
       .join('、');
-    await this.send(channel, this.builder.text(`⚠️ 今天${periods}可能下雨`));
+    await this.send(target, this.builder.text(`⚠️ 今天${periods}可能下雨`));
   }
 
-  async sendRepo(channel: string, details: RepoPushDetails): Promise<void> {
+  async sendRepo(
+    channel: PushChannelTarget,
+    details: RepoPushDetails,
+  ): Promise<void> {
+    const target = this.normalizeChannel(channel);
     let message: WxwMarkdownInfo;
 
     switch (details.event) {
@@ -255,23 +262,24 @@ export class WxworkAdapter implements PushAdapter {
         throw new Error(`Unsupported GitHub webhook event: ${details.event}`);
     }
 
-    await this.send(channel, this.builder.markdownInfo(message));
+    await this.send(target, this.builder.markdownInfo(message));
   }
 
   async sendMcServer(
-    channel: string,
+    channel: PushChannelTarget,
     details: McServerPushDetails,
   ): Promise<void> {
+    const target = this.normalizeChannel(channel);
     if (details.event === 'server_started') {
       await this.send(
-        channel,
+        target,
         this.builder.markdown('「Server」✅服务器启动成功'),
       );
       return;
     }
     if (details.event === 'server_stopped') {
       await this.send(
-        channel,
+        target,
         this.builder.markdown('「Server」❌服务器已关闭'),
       );
       return;
@@ -283,7 +291,7 @@ export class WxworkAdapter implements PushAdapter {
       : '当前没有玩家在线';
     const joined = details.event === 'player_joined';
     await this.send(
-      channel,
+      target,
       this.builder.markdownInfo({
         type: 'Player',
         title: joined
@@ -298,7 +306,11 @@ export class WxworkAdapter implements PushAdapter {
     );
   }
 
-  async sendDevice(channel: string, details: DevicePushDetails): Promise<void> {
+  async sendDevice(
+    channel: PushChannelTarget,
+    details: DevicePushDetails,
+  ): Promise<void> {
+    const target = this.normalizeChannel(channel);
     const cpuUsage = details.cpuUsage.toFixed(2);
     const memoryUsage = details.memoryUsage.toFixed(2);
     const applicationDetails = details.highCpuApplications.length
@@ -313,7 +325,7 @@ export class WxworkAdapter implements PushAdapter {
         };
 
     await this.send(
-      channel,
+      target,
       this.builder.markdownInfo({
         type: 'Device',
         title:
@@ -386,6 +398,13 @@ export class WxworkAdapter implements PushAdapter {
     } finally {
       clearTimeout(timeoutId);
     }
+  }
+
+  private normalizeChannel(channel: PushChannelTarget): string {
+    if (typeof channel !== 'string') {
+      throw new Error('Wxwork channel must be a string');
+    }
+    return channel;
   }
 
   private validateMessage(message: WxwMessage): boolean {

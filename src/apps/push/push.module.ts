@@ -1,10 +1,10 @@
 import { Module } from '@nestjs/common';
-import { PushChannelsController } from './controllers';
+import { PushChannelsController, QqbotCallbackController } from './controllers';
 import { PushApplicationsModule } from './applications/applications.module';
 
 @Module({
   imports: [PushApplicationsModule],
-  controllers: [PushChannelsController],
+  controllers: [PushChannelsController, QqbotCallbackController],
   exports: [PushApplicationsModule],
 })
 export class PushModule {}
