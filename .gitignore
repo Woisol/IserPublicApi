@@ -397,4 +397,4 @@ dist
 .serverless/**/*.zip
 
 # private
-bot-key.json
+bot-key*.json

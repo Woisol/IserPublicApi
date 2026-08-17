@@ -9,12 +9,16 @@ import type {
 } from '@app/apps/push/types/push-message';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { QqbotMessageService } from './qqbot-message.service';
+import { BotKeyLoader } from '../../botkey-loader';
 
 @Injectable()
 export class QqbotAdapter implements PushAdapter {
   readonly name = 'qqbot' as const;
 
-  constructor(private readonly messageService: QqbotMessageService) {
+  constructor(
+    private readonly messageService: QqbotMessageService,
+    private readonly botKeyLoader: BotKeyLoader,
+  ) {
     if (
       process.env.WEBHOOK_SEND_ADAPTER === 'qqbot' &&
       (!process.env.QQBOT_APP_ID || !process.env.QQBOT_APP_SECRET)
@@ -26,7 +30,7 @@ export class QqbotAdapter implements PushAdapter {
   }
 
   getAvailableChannels(): string[] {
-    return [];
+    return this.botKeyLoader.getAvailableChannels(this.name);
   }
 
   async sendGameDaily(
@@ -45,7 +49,7 @@ export class QqbotAdapter implements PushAdapter {
                   .join('\n'),
               )
               .join('\n')}`;
-    await this.messageService.sendText(channel, content);
+    await this.messageService.sendText(this.resolveChannel(channel), content);
   }
 
   async sendWeather(
@@ -56,7 +60,7 @@ export class QqbotAdapter implements PushAdapter {
       details.kind === 'minutely-rain'
         ? `预计 ${Math.max(Math.round((details.startsAt.getTime() - Date.now()) / 60000), 0)}min 后开始下雨\n降雨量 ${details.precipitationTimeline.map((value) => `${value.toFixed(2)}mm`).join('|')}，峰值 ${details.peakPrecipitation.toFixed(2)}mm`
         : `今天${details.periods.map((period) => `${period.startTime.getHours()}-${period.endTime.getHours()}点`).join('、')}可能下雨`;
-    await this.messageService.sendText(channel, content);
+    await this.messageService.sendText(this.resolveChannel(channel), content);
   }
 
   async sendRepo(
@@ -64,7 +68,7 @@ export class QqbotAdapter implements PushAdapter {
     details: RepoPushDetails,
   ): Promise<void> {
     await this.messageService.sendText(
-      channel,
+      this.resolveChannel(channel),
       `GitHub 事件：${details.event}`,
     );
   }
@@ -74,7 +78,7 @@ export class QqbotAdapter implements PushAdapter {
     details: McServerPushDetails,
   ): Promise<void> {
     await this.messageService.sendText(
-      channel,
+      this.resolveChannel(channel),
       `Minecraft 事件：${details.event}`,
     );
   }
@@ -84,8 +88,19 @@ export class QqbotAdapter implements PushAdapter {
     details: DevicePushDetails,
   ): Promise<void> {
     await this.messageService.sendText(
-      channel,
+      this.resolveChannel(channel),
       `设备告警：CPU ${details.cpuUsage.toFixed(2)}%，内存 ${details.memoryUsage.toFixed(2)}%`,
     );
+  }
+
+  private resolveChannel(channel: PushChannelTarget): PushChannelTarget {
+    if (typeof channel !== 'string') return channel;
+    const target = this.botKeyLoader.getBotKey(this.name, channel);
+    if (!target) {
+      throw new Error(
+        `Channel '${channel}' not found in bot-key.${this.name}.json`,
+      );
+    }
+    return target;
   }
 }

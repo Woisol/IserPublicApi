@@ -4,7 +4,7 @@ import type {
   DevicePushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
-  PushChannels,
+  PushChannelInput,
   PushChannelTarget,
   PushMessageDetailsMap,
   PushMessageType,
@@ -49,7 +49,7 @@ export class PushService {
 
   async sendMessage<T extends PushMessageType>(
     type: T,
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: PushMessageDetailsMap[T],
   ): Promise<void> {
     switch (type) {
@@ -67,7 +67,7 @@ export class PushService {
   }
 
   private async sendGameDaily(
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: GameDailyPushDetails,
   ): Promise<void> {
     const channel = this.getChannel('game-daily', channels);
@@ -75,7 +75,7 @@ export class PushService {
   }
 
   private async sendWeather(
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: WeatherPushDetails,
   ): Promise<void> {
     const channel = this.getChannel('weather', channels);
@@ -83,7 +83,7 @@ export class PushService {
   }
 
   private async sendRepo(
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: RepoPushDetails,
   ): Promise<void> {
     const channel = this.getChannel('repo', channels);
@@ -91,7 +91,7 @@ export class PushService {
   }
 
   private async sendMcServer(
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: McServerPushDetails,
   ): Promise<void> {
     const channel = this.getChannel('mcserver', channels);
@@ -99,7 +99,7 @@ export class PushService {
   }
 
   private async sendDevice(
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
     details: DevicePushDetails,
   ): Promise<void> {
     const channel = this.getChannel('device', channels);
@@ -108,9 +108,10 @@ export class PushService {
 
   private getChannel(
     type: PushMessageType,
-    channels: PushChannels | undefined,
+    channels: PushChannelInput | undefined,
   ): PushChannelTarget | undefined {
-    const channel = channels?.[this.sendAdapter];
+    const channel =
+      typeof channels === 'string' ? channels : channels?.[this.sendAdapter];
     if (!channel) {
       this.logger.error(
         `Missing ${this.sendAdapter} channel for push message: ${type}`,

@@ -35,7 +35,7 @@ export class WxworkAdapter implements PushAdapter {
   constructor(private readonly botKeyLoader: BotKeyLoader) {}
 
   getAvailableChannels(): string[] {
-    return this.botKeyLoader.getAvailableChannels();
+    return this.botKeyLoader.getAvailableChannels(this.name);
   }
 
   async sendGameDaily(

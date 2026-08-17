@@ -20,6 +20,8 @@ export type PushChannels = Partial<{
   qqbot: QqbotChannel;
 }>;
 
+export type PushChannelInput = string | PushChannels;
+
 export type GameDailyPushDetails =
   | {
       wakeupSuccessful: false;

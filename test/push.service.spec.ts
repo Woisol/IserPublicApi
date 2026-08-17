@@ -39,7 +39,7 @@ describe('PushService', () => {
       detail: [{ 完成时间: '04:10' }],
     };
 
-    await service.sendMessage('game-daily', { wxwork: 'genshin' }, details);
+    await service.sendMessage('game-daily', 'genshin', details);
 
     expect(adapter.sendGameDaily).toHaveBeenCalledWith('genshin', details);
   });
