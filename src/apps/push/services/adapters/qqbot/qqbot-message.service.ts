@@ -51,33 +51,43 @@ export class QqbotMessageService {
     }[target.type];
     const requestBody = { ...body };
 
-    if (target.type === 'guild-channel') {
-      if (context?.messageId) requestBody.msg_id = context.messageId;
-      if (context?.eventId) requestBody.event_id = context.eventId;
-    } else {
-      if (context?.messageId) requestBody.msg_id = context.messageId;
-      if (context?.eventId) requestBody.event_id = context.eventId;
-      if (context?.msgSeq) requestBody.msg_seq = context.msgSeq;
+    // QQ 要求 msg_id 与 event_id 二选一；消息事件优先使用 msg_id。
+    if (context?.messageId) {
+      requestBody.msg_id = context.messageId;
+    } else if (context?.eventId) {
+      requestBody.event_id = context.eventId;
     }
+    if (context?.msgSeq) requestBody.msg_seq = context.msgSeq;
 
     const accessToken = await this.authService.getAccessToken();
     const response = await fetch(`https://api.bot.qq.com${endpoint}`, {
       method: 'POST',
       headers: {
         Authorization: `QQBot ${accessToken}`,
-        'Content-Type': 'application/json',
+        'Content-Type': 'application/json; charset=utf-8',
       },
       body: JSON.stringify(requestBody),
     });
-    if (!response.ok) {
-      throw new Error(`QQ Bot message HTTP error: ${response.status}`);
-    }
     const result = (await response.json()) as {
+      err_code?: number;
       code?: number;
       message?: string;
+      trace_id?: string;
     };
-    if (result.code && result.code !== 0) {
-      throw new Error(`QQ Bot message error: ${result.message || result.code}`);
+    const errorCode = result.err_code ?? result.code ?? 0;
+    if (!response.ok) {
+      throw new Error(
+        `QQ Bot message HTTP error: ${response.status}` +
+          (errorCode ? `, err_code: ${errorCode}` : '') +
+          (result.message ? `, message: ${result.message}` : '') +
+          (result.trace_id ? `, trace_id: ${result.trace_id}` : ''),
+      );
+    }
+    if (errorCode !== 0) {
+      throw new Error(
+        `QQ Bot message error: ${result.message || errorCode}` +
+          (result.trace_id ? ` (trace_id: ${result.trace_id})` : ''),
+      );
     }
   }
 }
