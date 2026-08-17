@@ -1,7 +1,7 @@
 import { Controller, Post, Req, Headers, Body } from '@nestjs/common';
 import { type Request } from 'express';
 import { PushService } from '@app/apps/push/services';
-import { PushApplicationsRepoService } from '@app/apps/push/services/applications/repo.service';
+import { PushApplicationsRepoService } from '@app/apps/push/services/applications/repo/repo.service';
 import type { GitHubWebhookPayload } from '@app/apps/push/types/applications/repo.d';
 import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
 import { CompactLogger } from '@app/common/utils/logger';

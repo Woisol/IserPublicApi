@@ -1,8 +1,8 @@
 import { Injectable } from '@nestjs/common';
-import { PushService } from '..';
+import { PushService } from '../../push.service';
 import { CompactLogger } from '@app/common/utils/logger';
-import { WxwMarkdownInfo } from '../../types/wxw-webhook';
-import { formatMcServerPlayerList } from './utils/mcserver';
+import type { McServerPushDetails } from '@app/apps/push/types/push-message';
+import { formatMcServerPlayerList } from './mcserver.util';
 
 @Injectable()
 export class McServerService {
@@ -19,7 +19,7 @@ export class McServerService {
   }
 
   sendPlayerJoin(playerName: string, curPlayers: string[]) {
-    const msg: WxwMarkdownInfo = {
+    const msg: McServerPushDetails = {
       type: 'Player',
       title: `🎮 <font color="info">${playerName} 加入了服务器</font>`,
       content: [
@@ -33,7 +33,7 @@ export class McServerService {
   }
 
   sendPlayerLeave(playerName: string, curPlayers: string[], playTime?: string) {
-    const msg: WxwMarkdownInfo = {
+    const msg: McServerPushDetails = {
       type: 'Player',
       title: `👋 <font color="warning">${playerName} 离开了服务器</font>`,
       content: [
@@ -47,11 +47,19 @@ export class McServerService {
     this._sendMarkdownInfoToChannel(msg);
   }
 
-  _sendMarkdownToChannel(markdown: string) {
-    this.pushService.sendMarkdownMessage(markdown, 'mcserver');
+  private _sendMarkdownToChannel(markdown: string) {
+    void this.pushService.sendMessage(
+      'mcserver',
+      { wxwork: 'mcserver' },
+      { title: '', content: [], markdown },
+    );
   }
 
-  _sendMarkdownInfoToChannel(markdownInfo: WxwMarkdownInfo) {
-    this.pushService.sendMarkdownInfoMessage(markdownInfo, 'mcserver');
+  private _sendMarkdownInfoToChannel(details: McServerPushDetails) {
+    void this.pushService.sendMessage(
+      'mcserver',
+      { wxwork: 'mcserver' },
+      details,
+    );
   }
 }

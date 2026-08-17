@@ -1,5 +1,5 @@
 import { Body, Controller, Get, Post, Query } from '@nestjs/common';
-import { McServerService } from '../../services/applications/mcserver.service';
+import { McServerService } from '../../services/applications/mcserver/mcserver.service';
 // import * as mcserver from '../../types/applications/mcserver';
 import { CompactLogger } from '@app/common/utils/logger';
 import { type McServerWebhookPayload } from '../../types/applications/mcserver';

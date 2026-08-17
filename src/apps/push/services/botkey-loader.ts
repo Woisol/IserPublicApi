@@ -88,7 +88,10 @@ export class BotKeyLoader {
     }
 
     // 构建企微机器人 webhook URL
-    return `${process.env.WXWORK_WEBHOOK_URL}?key=${key}`;
+    const webhookUrl =
+      process.env.WXWORK_WEBHOOK_URL ||
+      'https://qyapi.weixin.qq.com/cgi-bin/webhook/send';
+    return `${webhookUrl}?key=${key}`;
   }
 
   /**

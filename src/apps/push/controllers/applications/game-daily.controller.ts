@@ -1,5 +1,5 @@
 import { Controller, Get, Param, Post, Query } from '@nestjs/common';
-import { PushApplicationsGameDailyService } from '../../services/applications/game-daily.service';
+import { PushApplicationsGameDailyService } from '../../services/applications/game-daily/game-daily.service';
 
 @Controller('push/game-daily')
 export class GameDailyController {

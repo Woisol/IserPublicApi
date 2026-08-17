@@ -1,4 +1,4 @@
-import { shorttenGitMessage } from './repo';
+import { shorttenGitMessage } from './repo.util';
 
 describe('repo', () => {
   describe('shorttenGitMessage', () => {

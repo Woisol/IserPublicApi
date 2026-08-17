@@ -3,10 +3,10 @@
  * 当 CPU 连续高负荷时发送告警消息
  */
 import { Injectable } from '@nestjs/common';
-import { PushService } from '../index';
-import type { WxwMarkdownInfo } from '../../types/wxw-webhook';
+import { PushService } from '../../push.service';
+import type { DevicePushDetails } from '@app/apps/push/types/push-message';
 import * as os from 'os';
-import { CompactLogger } from '../../../../common/utils/logger';
+import { CompactLogger } from '@app/common/utils/logger';
 import { execFile } from 'child_process';
 import { promisify } from 'util';
 
@@ -280,7 +280,7 @@ export class DeviceMonitorService {
           状态: `未发现 CPU 占用率超过 ${this.highCpuApplicationThreshold}% 的应用`,
         };
 
-    const markdownInfo: WxwMarkdownInfo = {
+    const markdownInfo: DevicePushDetails = {
       type: 'Device',
       title:
         cpuUsage > this.extremeCpuThreshold
@@ -470,11 +470,11 @@ export class DeviceMonitorService {
   /**
    * 发送结构化 Markdown 通知消息
    */
-  private sendStructuredNotification(markdownInfo: WxwMarkdownInfo): void {
+  private sendStructuredNotification(details: DevicePushDetails): void {
     // this.logger.log(`发送结构化设备监控通知: ${markdownInfo.title}`);
 
     // 使用 void 操作符忽略 Promise
-    void this.pushService.sendMarkdownInfoMessage(markdownInfo, 'monitor');
+    void this.pushService.sendMessage('device', { wxwork: 'monitor' }, details);
   }
 
   //   /**

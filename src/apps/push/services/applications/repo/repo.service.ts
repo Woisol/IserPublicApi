@@ -10,12 +10,12 @@ import {
   ReleaseWebhookPayload,
   WorkflowRunWebhookPayload,
   WebhookProcessResult,
-} from '../../types/applications/repo.d';
-import { GitHubWebhookEvent } from '../../types/applications/repo.runtime';
-import { WxwMarkdownInfo } from '../../types/wxw-webhook';
-import { PushService } from '..';
+} from '@app/apps/push/types/applications/repo';
+import { GitHubWebhookEvent } from '@app/apps/push/types/applications/repo.runtime';
+import type { RepoPushDetails } from '@app/apps/push/types/push-message';
+import { PushService } from '../../push.service';
 import { CompactLogger } from '@app/common/utils/logger';
-import { shorttenGitMessage } from './utils/repo';
+import { shorttenGitMessage } from './repo.util';
 
 @Injectable()
 export class PushApplicationsRepoService {
@@ -80,7 +80,7 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, member, repository, changes } = payload;
 
-    let markdownInfo: WxwMarkdownInfo;
+    let markdownInfo: RepoPushDetails;
 
     switch (action) {
       case 'added':
@@ -141,7 +141,7 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, issue, repository, sender } = payload;
 
-    let markdownInfo: WxwMarkdownInfo;
+    let markdownInfo: RepoPushDetails;
     const issueUrl = issue.html_url;
 
     switch (action) {
@@ -203,7 +203,7 @@ export class PushApplicationsRepoService {
   ): WebhookProcessResult {
     const { action, release, repository } = payload;
 
-    let markdownInfo: WxwMarkdownInfo;
+    let markdownInfo: RepoPushDetails;
     const releaseUrl = release.html_url;
 
     switch (action) {
@@ -277,7 +277,7 @@ export class PushApplicationsRepoService {
       };
     }
 
-    let message: WxwMarkdownInfo;
+    let message: RepoPushDetails;
     const workflowUrl = workflow_run.html_url;
     const conclusion = workflow_run.conclusion;
 
@@ -370,11 +370,11 @@ export class PushApplicationsRepoService {
    * 发送结构化 Markdown 通知消息
    */
   private sendStructuredNotification(
-    markdownInfo: WxwMarkdownInfo,
+    details: RepoPushDetails,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     _payload?: GitHubWebhookPayload,
   ): void {
-    void this.pushService.sendMarkdownInfoMessage(markdownInfo, 'repo');
+    void this.pushService.sendMessage('repo', { wxwork: 'repo' }, details);
   }
 
   /**

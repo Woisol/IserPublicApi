@@ -16,7 +16,7 @@ jest.mock(
   { virtual: true },
 );
 
-import { WeatherService } from '../src/apps/push/services/applications/weather.service';
+import { WeatherService } from '../src/apps/push/services/applications/weather/weather.service';
 
 describe('WeatherService', () => {
   const originalEnv = process.env;
@@ -73,7 +73,7 @@ describe('WeatherService', () => {
     });
 
     const service = new WeatherService({
-      sendTextMessage: jest.fn(),
+      sendMessage: jest.fn(),
     } as any);
 
     const result = await (

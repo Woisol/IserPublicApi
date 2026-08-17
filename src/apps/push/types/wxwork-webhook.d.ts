@@ -3,7 +3,7 @@
  * 基于企业微信官方文档: https://developer.work.weixin.qq.com/document/path/99110
  */
 
-import { WxwMessageType, WxwTemplateCardType } from './wxw-webhook.runtime';
+import { WxwMessageType, WxwTemplateCardType } from './wxwork-webhook.runtime';
 
 // export type WxwMarkdownInfoContent<T = WxwMarkdownInfoContent> = {
 //   [key: string]: T<string>;

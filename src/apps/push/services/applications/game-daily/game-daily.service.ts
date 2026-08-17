@@ -1,16 +1,16 @@
 import { HttpException, Injectable } from '@nestjs/common';
-import { PushService } from '..';
+import { PushService } from '../../push.service';
 import { CompactLogger } from '@app/common/utils/logger';
 import {
   GameLogFetchOption,
   GameLogFetchRawOption,
   GameLogFetchResult,
-} from '../../types/applications/game-daily';
+} from '@app/apps/push/types/applications/game-daily';
 import {
   findGameLogFetchConfig,
   gameName2GameChannel,
-} from './utils/game-daily';
-import { WxwMarkdownInfo } from '../../types/wxw-webhook';
+} from './game-daily.util';
+import type { GameDailyPushDetails } from '@app/apps/push/types/push-message';
 import { exec } from 'child_process';
 
 /**
@@ -93,12 +93,16 @@ export class PushApplicationsGameDailyService {
         return 'success';
       } else {
         this.logger.error(`唤醒失败`);
-        const message: WxwMarkdownInfo = {
+        const message: GameDailyPushDetails = {
           type: 'Wakeup',
           title: '❌ 电脑唤醒失败',
           content: ['⚠️ <font color="warning" > 请及时检查并修复问题 </font>'],
         };
-        this.pushService.sendMarkdownInfoMessage(message, 'general');
+        void this.pushService.sendMessage(
+          'game-daily',
+          { wxwork: 'general' },
+          message,
+        );
         return message;
       }
     });
@@ -116,7 +120,7 @@ export class PushApplicationsGameDailyService {
     const today = new Date();
     const gameChannel = gameName2GameChannel(gameName);
 
-    let message: WxwMarkdownInfo;
+    let message: GameDailyPushDetails;
 
     try {
       const game = findGameLogFetchConfig(this.GAMELOGFETCH, gameName, today);
@@ -128,7 +132,11 @@ export class PushApplicationsGameDailyService {
           title: `⚠️ ${gameName} 每日完成情况获取失败`,
           content: [{ 详情: '无法获取日志' }],
         };
-        await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
+        await this.pushService.sendMessage(
+          'game-daily',
+          { wxwork: gameChannel },
+          message,
+        );
         return message;
       }
 
@@ -138,7 +146,11 @@ export class PushApplicationsGameDailyService {
           : `❌ ${gameName} 每日任务未完成`,
         content: logRes.details,
       };
-      await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
+      await this.pushService.sendMessage(
+        'game-daily',
+        { wxwork: gameChannel },
+        message,
+      );
       this.logger.info('已发送每日任务情况通知');
       return message;
     } catch (error) {
@@ -147,7 +159,11 @@ export class PushApplicationsGameDailyService {
         title: `⚠️ ${gameName} 每日完成情况获取失败`,
         content: [{ 详情: error.message as string }],
       };
-      await this.pushService.sendMarkdownInfoMessage(message, gameChannel);
+      await this.pushService.sendMessage(
+        'game-daily',
+        { wxwork: gameChannel },
+        message,
+      );
       return message;
     }
   }

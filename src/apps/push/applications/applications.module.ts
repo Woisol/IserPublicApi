@@ -13,7 +13,8 @@ import {
 } from '../services/applications';
 import { BotKeyLoader } from '../services/botkey-loader';
 import { PushService } from '../services';
-import { PushApplicationsGameDailyService } from '../services/applications/game-daily.service';
+import { WxworkAdapter } from '../services/adapters';
+import { PushApplicationsGameDailyService } from '../services/applications/game-daily/game-daily.service';
 
 @Module({
   controllers: [
@@ -24,6 +25,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
   ],
   providers: [
     BotKeyLoader,
+    WxworkAdapter,
     PushService,
     PushApplicationsRepoService,
     PushApplicationsWeatherService,
@@ -35,6 +37,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsRepoService,
     PushApplicationsWeatherService,
     PushApplicationsDeviceMonitorService,
+    PushService,
   ],
 })
 export class PushApplicationsModule {}

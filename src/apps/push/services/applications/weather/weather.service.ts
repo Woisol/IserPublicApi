@@ -12,8 +12,8 @@ import type {
   HourlyWeatherData,
   WeatherMonitorConfig,
   WeatherAlertResult,
-} from '../../types/applications/weather.d';
-import { PushService } from '..';
+} from '@app/apps/push/types/applications/weather';
+import { PushService } from '../../push.service';
 import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
@@ -314,7 +314,11 @@ export class WeatherService implements OnModuleInit {
    */
   private async sendRainAlert(message: string) {
     try {
-      await this.pushService.sendTextMessage(message, 'weather');
+      await this.pushService.sendMessage(
+        'weather',
+        { wxwork: 'weather' },
+        { message },
+      );
     } catch (error) {
       this.logger.error('Failed to send rain alert:', error);
       throw error;

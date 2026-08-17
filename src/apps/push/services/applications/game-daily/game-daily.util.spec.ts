@@ -1,4 +1,4 @@
-import { factoryGameLogURL } from './game-daily';
+import { factoryGameLogURL } from './game-daily.util';
 
 describe('repo', () => {
   describe('shorttenGitMessage', () => {
