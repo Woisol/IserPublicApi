@@ -13,7 +13,7 @@ import {
 } from '../services/applications';
 import { BotKeyLoader } from '../services/botkey-loader';
 import { PushService } from '../services';
-import { WxworkAdapter } from '../services/adapters';
+import { PUSH_ADAPTERS, WxworkAdapter } from '../services/adapters';
 import { PushApplicationsGameDailyService } from '../services/applications/game-daily/game-daily.service';
 
 @Module({
@@ -26,6 +26,11 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
   providers: [
     BotKeyLoader,
     WxworkAdapter,
+    {
+      provide: PUSH_ADAPTERS,
+      useFactory: (wxworkAdapter: WxworkAdapter) => [wxworkAdapter],
+      inject: [WxworkAdapter],
+    },
     PushService,
     PushApplicationsRepoService,
     PushApplicationsWeatherService,

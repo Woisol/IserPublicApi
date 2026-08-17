@@ -26,6 +26,7 @@ import { wxworkMessageBuilder } from './wxwork-message-builder';
 
 @Injectable()
 export class WxworkAdapter implements PushAdapter {
+  readonly name = 'wxwork' as const;
   private readonly logger = new CompactLogger(WxworkAdapter.name);
   private readonly builder = wxworkMessageBuilder();
   private readonly timeout = 10000;

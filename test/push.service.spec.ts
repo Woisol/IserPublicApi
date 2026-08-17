@@ -9,7 +9,7 @@ jest.mock(
 );
 
 import { PushService } from '../src/apps/push/services/push.service';
-import type { WxworkAdapter } from '../src/apps/push/services/adapters';
+import type { PushAdapter } from '../src/apps/push/types/push-adapter';
 
 describe('PushService', () => {
   const originalEnv = process.env;
@@ -30,11 +30,13 @@ describe('PushService', () => {
       sendRepo: jest.fn(),
       sendMcServer: jest.fn(),
       sendDevice: jest.fn(),
-    } as unknown as WxworkAdapter;
-    const service = new PushService(adapter);
+      name: 'wxwork',
+    } as unknown as PushAdapter;
+    const service = new PushService([adapter]);
     const details = {
-      title: '每日任务已完成',
-      content: [{ 完成时间: '04:10' }],
+      gameName: 'Genshin',
+      status: 'finished' as const,
+      detail: [{ 完成时间: '04:10' }],
     };
 
     await service.sendMessage('game-daily', { wxwork: 'genshin' }, details);
@@ -50,12 +52,57 @@ describe('PushService', () => {
       sendRepo: jest.fn(),
       sendMcServer: jest.fn(),
       sendDevice: jest.fn(),
-    } as unknown as WxworkAdapter;
-    const service = new PushService(adapter);
+      name: 'wxwork',
+    } as unknown as PushAdapter;
+    const service = new PushService([adapter]);
 
     await expect(
-      service.sendMessage('weather', undefined, { message: '即将下雨' }),
+      service.sendMessage('weather', undefined, {
+        kind: 'minutely-rain',
+        startsAt: new Date(),
+        precipitationTimeline: [1],
+        peakPrecipitation: 1,
+        peakAt: new Date(),
+      }),
     ).resolves.toBeUndefined();
     expect(adapter.sendWeather).not.toHaveBeenCalled();
+  });
+
+  it('uses the configured adapter name to select its channel', async () => {
+    process.env.WEBHOOK_SEND_ADAPTER = 'qqbot';
+    const adapter = {
+      getAvailableChannels: jest.fn(),
+      sendGameDaily: jest.fn(),
+      sendWeather: jest.fn(),
+      sendRepo: jest.fn(),
+      sendMcServer: jest.fn(),
+      sendDevice: jest.fn(),
+      name: 'qqbot',
+    } as unknown as PushAdapter;
+    const service = new PushService([adapter]);
+    const details = {
+      kind: 'daily-rain' as const,
+      periods: [],
+    };
+
+    await service.sendMessage('weather', { qqbot: 'weather-group' }, details);
+
+    expect(adapter.sendWeather).toHaveBeenCalledWith('weather-group', details);
+  });
+
+  it('throws when WEBHOOK_SEND_ADAPTER is missing', () => {
+    delete process.env.WEBHOOK_SEND_ADAPTER;
+
+    expect(() => new PushService([])).toThrow(
+      'WEBHOOK_SEND_ADAPTER is required',
+    );
+  });
+
+  it('throws when WEBHOOK_SEND_ADAPTER has no registered implementation', () => {
+    process.env.WEBHOOK_SEND_ADAPTER = 'qqbot';
+
+    expect(() => new PushService([])).toThrow(
+      "Webhook send adapter 'qqbot' is not registered",
+    );
   });
 });

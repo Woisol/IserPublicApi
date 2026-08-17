@@ -5,8 +5,10 @@ import type {
   RepoPushDetails,
   WeatherPushDetails,
 } from './push-message';
+import type { PushChannel } from './push-message';
 
 export interface PushAdapter {
+  readonly name: PushChannel;
   getAvailableChannels(): string[];
   sendGameDaily(channel: string, details: GameDailyPushDetails): Promise<void>;
   sendWeather(channel: string, details: WeatherPushDetails): Promise<void>;
