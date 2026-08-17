@@ -95,12 +95,16 @@ export class QqbotAdapter implements PushAdapter {
 
   private resolveChannel(channel: PushChannelTarget): PushChannelTarget {
     if (typeof channel !== 'string') return channel;
-    const target = this.botKeyLoader.getBotKey(this.name, channel);
-    if (!target) {
+
+    const groupOpenid = this.botKeyLoader.getBotKey(this.name, channel);
+    if (!groupOpenid) {
       throw new Error(
         `Channel '${channel}' not found in bot-key.${this.name}.json`,
       );
     }
-    return target;
+    return {
+      type: 'group',
+      id: groupOpenid,
+    };
   }
 }

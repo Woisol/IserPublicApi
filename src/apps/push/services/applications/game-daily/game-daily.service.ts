@@ -92,11 +92,9 @@ export class PushApplicationsGameDailyService {
         return 'success';
       } else {
         this.logger.error(`唤醒失败`);
-        void this.pushService.sendMessage(
-          'game-daily',
-          { wxwork: 'general' },
-          { wakeupSuccessful: false },
-        );
+        void this.pushService.sendMessage('game-daily', 'general', {
+          wakeupSuccessful: false,
+        });
       }
     });
   }
@@ -125,11 +123,7 @@ export class PushApplicationsGameDailyService {
           detail: [],
           failureReason: '无法获取日志',
         };
-        await this.pushService.sendMessage(
-          'game-daily',
-          { wxwork: gameChannel },
-          details,
-        );
+        await this.pushService.sendMessage('game-daily', gameChannel, details);
         return details;
       }
 
@@ -140,14 +134,11 @@ export class PushApplicationsGameDailyService {
           : ('unfinished' as const),
         detail: logRes.details,
       };
-      await this.pushService.sendMessage(
-        'game-daily',
-        { wxwork: gameChannel },
-        details,
-      );
+      await this.pushService.sendMessage('game-daily', gameChannel, details);
       this.logger.info('已发送每日任务情况通知');
       return details;
     } catch (error) {
+      // qqbot 的 error object 莫名其妙没有 log 出来……
       this.logger.error(error);
       const details = {
         gameName,
@@ -155,11 +146,7 @@ export class PushApplicationsGameDailyService {
         detail: [],
         failureReason: error instanceof Error ? error.message : '未知错误',
       };
-      await this.pushService.sendMessage(
-        'game-daily',
-        { wxwork: gameChannel },
-        details,
-      );
+      await this.pushService.sendMessage('game-daily', gameChannel, details);
       return details;
     }
   }

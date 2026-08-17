@@ -268,29 +268,24 @@ export class DeviceMonitorService {
     const cpuUsage = +this.avgUsage.toFixed(2);
     const memUsage = +systemInfo.memoryUsage.toFixed(2);
     const highCpuApplications = await this.getHighCpuApplications();
-    void this.pushService.sendMessage(
-      'device',
-      { wxwork: 'monitor' },
-      {
-        cpuUsage,
-        cpuSeverity:
-          cpuUsage > this.extremeCpuThreshold ? 'critical' : 'warning',
-        memoryUsage: memUsage,
-        memorySeverity:
-          memUsage > this.extremeMemThreshold
-            ? 'critical'
-            : memUsage > this.warningMemThreshold
-              ? 'warning'
-              : 'normal',
-        checkedAt: new Date(),
-        platform: systemInfo.platform,
-        cpuModel: systemInfo.cpuModel,
-        cpuCount: systemInfo.cpuCount,
-        uptimeSeconds: os.uptime(),
-        highCpuApplications,
-        highCpuApplicationThreshold: this.highCpuApplicationThreshold,
-      },
-    );
+    void this.pushService.sendMessage('device', 'monitor', {
+      cpuUsage,
+      cpuSeverity: cpuUsage > this.extremeCpuThreshold ? 'critical' : 'warning',
+      memoryUsage: memUsage,
+      memorySeverity:
+        memUsage > this.extremeMemThreshold
+          ? 'critical'
+          : memUsage > this.warningMemThreshold
+            ? 'warning'
+            : 'normal',
+      checkedAt: new Date(),
+      platform: systemInfo.platform,
+      cpuModel: systemInfo.cpuModel,
+      cpuCount: systemInfo.cpuCount,
+      uptimeSeconds: os.uptime(),
+      highCpuApplications,
+      highCpuApplicationThreshold: this.highCpuApplicationThreshold,
+    });
   }
 
   /**

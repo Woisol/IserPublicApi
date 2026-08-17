@@ -297,11 +297,7 @@ export class WeatherService implements OnModuleInit {
     details: import('@app/apps/push/types/push-message').WeatherPushDetails,
   ) {
     try {
-      await this.pushService.sendMessage(
-        'weather',
-        { wxwork: 'weather' },
-        details,
-      );
+      await this.pushService.sendMessage('weather', 'weather', details);
     } catch (error) {
       this.logger.error('Failed to send rain alert:', error);
       throw error;

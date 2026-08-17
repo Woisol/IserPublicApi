@@ -140,15 +140,11 @@ export class PushApplicationsRepoService {
     event: GitHubWebhookEvent,
     payload: GitHubWebhookPayload,
   ): void {
-    void this.pushService.sendMessage(
-      'repo',
-      { wxwork: 'repo' },
-      {
-        event,
-        payload,
-        receivedAt: new Date(),
-      },
-    );
+    void this.pushService.sendMessage('repo', 'repo', {
+      event,
+      payload,
+      receivedAt: new Date(),
+    });
   }
 
   verifyWebhookSignature(

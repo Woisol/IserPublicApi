@@ -8,9 +8,12 @@ import type {
 import { QqbotEventDeduplicatorService } from './qqbot-event-deduplicator.service';
 import { QqbotCommandRouterService } from './qqbot-command-router.service';
 import { QqbotMessageService } from '../adapters/qqbot/qqbot-message.service';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
 export class QqbotCallbackService {
+  private readonly logger = new CompactLogger(QqbotCallbackService.name);
+
   constructor(
     private readonly deduplicator: QqbotEventDeduplicatorService,
     private readonly commandRouter: QqbotCommandRouterService,
@@ -64,6 +67,13 @@ export class QqbotCallbackService {
       msgSeq: 1,
       rawEvent: event,
     };
+    this.logger.debug(
+      `QQ callback OpenID: ${
+        isGroup
+          ? `group=${(event as QqbotGroupMessageEvent).group_openid}`
+          : `user=${(event as QqbotC2cMessageEvent).author.user_openid}`
+      }`,
+    );
     const reply = await this.commandRouter.route(context);
     if (reply) {
       await this.messageService.sendText(context.target, reply, {
