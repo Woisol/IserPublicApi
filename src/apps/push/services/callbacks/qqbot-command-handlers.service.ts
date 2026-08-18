@@ -6,9 +6,11 @@ import {
   PushApplicationsWeatherService,
 } from '../applications';
 import { QqbotCommandRouterService } from './qqbot-command-router.service';
+import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
 export class QqbotCommandHandlersService {
+  private readonly logger: CompactLogger = new CompactLogger(QqbotCommandHandlersService.name);
   constructor(
     router: QqbotCommandRouterService,
     deviceService: PushApplicationsDeviceMonitorService,
@@ -108,7 +110,7 @@ export class QqbotCommandHandlersService {
       .map((value) => value.trim())
       .filter(Boolean);
     if (!whiteList.includes(context.userId)) {
-      console.warn(
+      this.logger.warn(
         `Unauthorized wake command attempt by userId=${context.userId}`,
       );
       return '你没有权限执行此命令';
