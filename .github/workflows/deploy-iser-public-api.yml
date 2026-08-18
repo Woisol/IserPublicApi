@@ -33,6 +33,8 @@ jobs:
         run: |
           mkdir -p ${{ env.SERVER_LOCAL_PATH }}/logs
           cp -r ./dist/* ${{ env.SERVER_LOCAL_PATH }}/
+          rm -rf ${{ env.SERVER_LOCAL_PATH }}/assets
+          cp -r ./assets ${{ env.SERVER_LOCAL_PATH }}/assets
           cp ./package.json ${{ env.SERVER_LOCAL_PATH }}/
           cp ./ecosystem.config.js ${{ env.SERVER_LOCAL_PATH }}/
 
@@ -56,6 +58,7 @@ jobs:
           QQBOT_APP_ID: ${{ secrets.QQBOT_APP_ID }}
           QQBOT_APP_SECRET: ${{ secrets.QQBOT_APP_SECRET }}
           QQBOT_COMMAND_PREFIX: /
+          BASE_URL: ${{ secrets.BASE_URL }}
 
           QWEATHER_LOCATION: ${{ secrets.QWEATHER_LOCATION }}
           QWEATHER_API_KEY: ${{ secrets.QWEATHER_API_KEY }}

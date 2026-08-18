@@ -18,6 +18,7 @@ import {
   QqbotAdapter,
   QqbotAuthService,
   QqbotMessageService,
+  QqbotMarkdownMessageHelper,
   WxworkAdapter,
 } from '../services/adapters';
 import {
@@ -40,6 +41,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     WxworkAdapter,
     QqbotAuthService,
     QqbotMessageService,
+    QqbotMarkdownMessageHelper,
     QqbotAdapter,
     QqbotCallbackService,
     QqbotCommandRouterService,
