@@ -82,34 +82,36 @@ export class PushApplicationsGameDailyService {
   /**
    * 唤醒电脑，如果失败发送消息
    */
-  wakeUpComputer() {
+  wakeUpComputer(): Promise<{ wakeupSuccessful: boolean }> {
     /**
      * 这里实现你的唤醒逻辑，暂时硬编码，调用本地的 sh 脚本实现
      */
-    exec('~/sh/wake').on('exit', (code) => {
-      if (code === 0) {
-        this.logger.log('已发送唤醒信号');
-        return 'success';
-      } else {
-        this.logger.error(`唤醒失败`);
+    return new Promise((resolve) => {
+      exec('~/sh/wake', (error) => {
+        if (!error) {
+          this.logger.log('已发送唤醒信号');
+          resolve({ wakeupSuccessful: true });
+          return;
+        }
+        this.logger.error('唤醒失败', error);
         void this.pushService.sendMessage('game-daily', 'general', {
           wakeupSuccessful: false,
         });
-      }
+        resolve({ wakeupSuccessful: false });
+      });
     });
   }
 
   /**
-   * 获取特定游戏每日完成情况并发送通知
+   * 获取特定游戏每日完成情况
    */
-  async processGameDailyCheck(gameName: string) {
+  async queryGameDailyCheck(gameName: string) {
     if (!gameName) {
       this.logger.error('缺少名称查询 name');
       throw new HttpException('缺少名称查询 name', 400);
     }
 
     const today = new Date();
-    const gameChannel = gameName2GameChannel(gameName);
 
     try {
       const game = findGameLogFetchConfig(this.GAMELOGFETCH, gameName, today);
@@ -123,7 +125,6 @@ export class PushApplicationsGameDailyService {
           detail: [],
           failureReason: '无法获取日志',
         };
-        await this.pushService.sendMessage('game-daily', gameChannel, details);
         return details;
       }
 
@@ -134,8 +135,6 @@ export class PushApplicationsGameDailyService {
           : ('unfinished' as const),
         detail: logRes.details,
       };
-      await this.pushService.sendMessage('game-daily', gameChannel, details);
-      this.logger.info('已发送每日任务情况通知');
       return details;
     } catch (error) {
       // qqbot 的 error object 莫名其妙没有 log 出来……
@@ -146,9 +145,22 @@ export class PushApplicationsGameDailyService {
         detail: [],
         failureReason: error instanceof Error ? error.message : '未知错误',
       };
-      await this.pushService.sendMessage('game-daily', gameChannel, details);
       return details;
     }
+  }
+
+  /**
+   * 获取特定游戏每日完成情况并发送通知
+   */
+  async processGameDailyCheck(gameName: string) {
+    const details = await this.queryGameDailyCheck(gameName);
+    await this.pushService.sendMessage(
+      'game-daily',
+      gameName2GameChannel(gameName),
+      details,
+    );
+    this.logger.info('已发送每日任务情况通知');
+    return details;
   }
 
   /**

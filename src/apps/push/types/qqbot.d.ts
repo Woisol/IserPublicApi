@@ -57,5 +57,7 @@ export interface QqbotCommandContext {
 export interface QqbotCommandHandler {
   readonly command: string;
   readonly aliases?: string[];
+  readonly description?: string;
+  readonly usage?: string;
   handle(context: QqbotCommandContext): string | Promise<string>;
 }

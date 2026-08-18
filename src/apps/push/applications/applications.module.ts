@@ -26,6 +26,7 @@ import {
   QqbotCommandRouterService,
   QqbotEventDeduplicatorService,
   QqbotSignatureService,
+  QqbotCommandHandlersService,
 } from '../services/callbacks';
 import { PushApplicationsGameDailyService } from '../services/applications/game-daily/game-daily.service';
 
@@ -47,6 +48,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     QqbotCommandRouterService,
     QqbotEventDeduplicatorService,
     QqbotSignatureService,
+    QqbotCommandHandlersService,
     {
       provide: PUSH_ADAPTERS,
       useFactory: (

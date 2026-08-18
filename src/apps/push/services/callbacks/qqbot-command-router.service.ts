@@ -11,7 +11,19 @@ export class QqbotCommandRouterService {
   constructor() {
     this.register({
       command: 'help',
-      handle: () => `可用命令：${[...this.handlers.keys()].join('、')}`,
+      description: '显示可用命令',
+      usage: '/help',
+      handle: () =>
+        [
+          '可用命令：',
+          ...this.getHandlers()
+            .filter(({ command }) => command !== 'help')
+            .map(
+              ({ command, aliases, description, usage }) =>
+                `/${command}${aliases?.length ? `（/${aliases.join('、/')}）` : ''}：${description || usage || '无说明'}`,
+            ),
+          '/help：显示可用命令',
+        ].join('\n'),
     });
   }
 
@@ -23,6 +35,10 @@ export class QqbotCommandRouterService {
       }
       this.handlers.set(command, handler);
     }
+  }
+
+  private getHandlers(): QqbotCommandHandler[] {
+    return [...new Set(this.handlers.values())];
   }
 
   async route(context: QqbotCommandContext): Promise<string | undefined> {
