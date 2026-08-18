@@ -1,3 +1,4 @@
+# TODO 新增的图片素材未处理
 # 使用官方 Node.js 22 镜像作为基础镜像
 FROM node:22-alpine AS base
 
