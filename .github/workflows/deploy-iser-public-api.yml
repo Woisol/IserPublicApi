@@ -58,6 +58,7 @@ jobs:
           QQBOT_APP_ID: ${{ secrets.QQBOT_APP_ID }}
           QQBOT_APP_SECRET: ${{ secrets.QQBOT_APP_SECRET }}
           QQBOT_COMMAND_PREFIX: /
+          QQBOT_COMMAND_WHITE_LIST: ${{ secrets.QQBOT_COMMAND_WHITE_LIST }}
           BASE_URL: ${{ secrets.BASE_URL }}
 
           QWEATHER_LOCATION: ${{ secrets.QWEATHER_LOCATION }}
