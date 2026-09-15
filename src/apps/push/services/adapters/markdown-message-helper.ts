@@ -192,7 +192,7 @@ export class MarkdownMessageHelper {
     const success = details.status === 'success';
     return this.buildMessage(
       `${success ? '✅' : '❌'} ComfyUI ${success ? '生成成功' : '生成失败'}`,
-      `comfyui.${details.status}.png`,
+      `comfyui.${details.status === 'success' ? 'success' : 'failed'}.png`,
       [
         this.field('Seed', details.seed.toString()),
         this.field('耗时', `${details.elapsed}秒`),
