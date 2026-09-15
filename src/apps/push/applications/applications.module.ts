@@ -4,12 +4,14 @@ import {
   PushApplicationsMcServerController,
   PushApplicationsRepoController,
   PushApplicationsWeatherController,
+  PushApplicationsComfyUiController,
 } from '../controllers';
 import {
   PushApplicationsRepoService,
   PushApplicationsWeatherService,
   PushApplicationsMcServerService,
   PushApplicationsDeviceMonitorService,
+  PushApplicationsComfyUiService,
 } from '../services/applications';
 import { BotKeyLoader } from '../services/botkey-loader';
 import { PushService } from '../services';
@@ -36,6 +38,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsWeatherController,
     PushApplicationsGameDailyController,
     PushApplicationsMcServerController,
+    PushApplicationsComfyUiController,
   ],
   providers: [
     BotKeyLoader,
@@ -62,6 +65,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsWeatherService,
     PushApplicationsGameDailyService,
     PushApplicationsMcServerService,
+    PushApplicationsComfyUiService,
     PushApplicationsDeviceMonitorService,
     QqbotCallbackService,
     QqbotCommandRouterService,

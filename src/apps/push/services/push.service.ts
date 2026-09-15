@@ -2,6 +2,7 @@ import { Inject, Injectable } from '@nestjs/common';
 import { CompactLogger } from '@app/common/utils/logger';
 import type {
   DevicePushDetails,
+  ComfyUiPushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
   PushChannelInput,
@@ -63,6 +64,8 @@ export class PushService {
         return this.sendMcServer(channels, details as McServerPushDetails);
       case 'device':
         return this.sendDevice(channels, details as DevicePushDetails);
+      case 'comfyui':
+        return this.sendComfyUi(channels, details as ComfyUiPushDetails);
     }
   }
 
@@ -104,6 +107,14 @@ export class PushService {
   ): Promise<void> {
     const channel = this.getChannel('device', channels);
     if (channel) await this.adapter.sendDevice(channel, details);
+  }
+
+  private async sendComfyUi(
+    channels: PushChannelInput | undefined,
+    details: ComfyUiPushDetails,
+  ): Promise<void> {
+    const channel = this.getChannel('comfyui', channels);
+    if (channel) await this.adapter.sendComfyUi(channel, details);
   }
 
   private getChannel(

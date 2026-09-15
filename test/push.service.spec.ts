@@ -30,6 +30,7 @@ describe('PushService', () => {
       sendRepo: jest.fn(),
       sendMcServer: jest.fn(),
       sendDevice: jest.fn(),
+      sendComfyUi: jest.fn(),
       name: 'wxwork',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);
@@ -52,6 +53,7 @@ describe('PushService', () => {
       sendRepo: jest.fn(),
       sendMcServer: jest.fn(),
       sendDevice: jest.fn(),
+      sendComfyUi: jest.fn(),
       name: 'wxwork',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);
@@ -77,6 +79,7 @@ describe('PushService', () => {
       sendRepo: jest.fn(),
       sendMcServer: jest.fn(),
       sendDevice: jest.fn(),
+      sendComfyUi: jest.fn(),
       name: 'qqbot',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);

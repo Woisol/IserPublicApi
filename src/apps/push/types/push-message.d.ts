@@ -73,12 +73,24 @@ export interface DevicePushDetails {
   highCpuApplicationThreshold: number;
 }
 
+export interface ComfyUiPushDetails {
+  status: 'success' | 'error';
+  seed: number;
+  elapsed: number;
+  res: number;
+  scale: number;
+  duration: number;
+  filename: string;
+  path: string;
+}
+
 export interface PushMessageDetailsMap {
   'game-daily': GameDailyPushDetails;
   weather: WeatherPushDetails;
   repo: RepoPushDetails;
   mcserver: McServerPushDetails;
   device: DevicePushDetails;
+  comfyui: ComfyUiPushDetails;
 }
 
 export type PushMessageType = keyof PushMessageDetailsMap;

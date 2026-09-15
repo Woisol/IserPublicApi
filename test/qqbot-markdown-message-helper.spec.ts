@@ -81,4 +81,24 @@ describe('QqbotMarkdownMessageHelper', () => {
     expect(message).toContain('# ✅ Genshin 每日任务已完成');
     expect(message).not.toContain('/assets/img/push/');
   });
+
+  it('builds ComfyUI messages with status images and seconds', () => {
+    const helper = new MarkdownMessageHelper();
+
+    const message = helper.buildComfyUiMarkdown({
+      status: 'success',
+      seed: 123,
+      elapsed: 1.5,
+      res: 0.5,
+      scale: 2,
+      duration: 3,
+      filename: 'result.png',
+      path: 'C:\\output\\result.png',
+    });
+
+    expect(message).toContain('/comfyui.success.png');
+    expect(message).toContain('> **耗时：** 1\\.5秒');
+    expect(message).toContain('> **分辨率：** 0\\.5');
+    expect(message).toContain('> **路径：**');
+  });
 });

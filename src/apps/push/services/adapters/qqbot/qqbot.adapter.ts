@@ -1,6 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import type {
   DevicePushDetails,
+  ComfyUiPushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
   PushChannelTarget,
@@ -82,6 +83,16 @@ export class QqbotAdapter implements PushAdapter {
     await this.messageService.sendMarkdown(
       this.resolveChannel(channel),
       this.markdownHelper.buildDeviceMarkdown(details),
+    );
+  }
+
+  async sendComfyUi(
+    channel: PushChannelTarget,
+    details: ComfyUiPushDetails,
+  ): Promise<void> {
+    await this.messageService.sendMarkdown(
+      this.resolveChannel(channel),
+      this.markdownHelper.buildComfyUiMarkdown(details),
     );
   }
 

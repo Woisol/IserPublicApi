@@ -3,4 +3,5 @@ export { ApplicationsRepoController as PushApplicationsRepoController } from './
 export { ApplicationsWeatherController as PushApplicationsWeatherController } from './applications/weather.controller';
 export { GameDailyController as PushApplicationsGameDailyController } from './applications/game-daily.controller';
 export { McServerController as PushApplicationsMcServerController } from './applications/mcserver.controller';
+export { ComfyUiController as PushApplicationsComfyUiController } from './applications/comfyui.controller';
 export { QqbotCallbackController } from './callbacks';

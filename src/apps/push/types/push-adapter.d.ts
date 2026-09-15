@@ -1,5 +1,6 @@
 import type {
   DevicePushDetails,
+  ComfyUiPushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
   RepoPushDetails,
@@ -26,5 +27,9 @@ export interface PushAdapter {
   sendDevice(
     channel: PushChannelTarget,
     details: DevicePushDetails,
+  ): Promise<void>;
+  sendComfyUi(
+    channel: PushChannelTarget,
+    details: ComfyUiPushDetails,
   ): Promise<void>;
 }

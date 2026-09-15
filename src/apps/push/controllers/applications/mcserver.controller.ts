@@ -3,6 +3,7 @@ import { McServerService } from '../../services/applications/mcserver/mcserver.s
 // import * as mcserver from '../../types/applications/mcserver';
 import { CompactLogger } from '@app/common/utils/logger';
 import { type McServerWebhookPayload } from '../../types/applications/mcserver';
+import { parseQueryList } from '../utils/query';
 
 @Controller('push/mcserver')
 export class McServerController {
@@ -59,7 +60,7 @@ export class McServerController {
     @Query('playerName') playerName: string,
     @Query('curPlayers') curPlayers: string,
   ) {
-    const curPlayersArr = curPlayers ? curPlayers.split(',') : [];
+    const curPlayersArr = parseQueryList(curPlayers);
     this.mcServerService.sendPlayerJoin(playerName, curPlayersArr);
   }
 
@@ -69,7 +70,7 @@ export class McServerController {
     @Query('curPlayers') curPlayers: string,
     @Query('playTime') playTime: string,
   ) {
-    const curPlayersArr = curPlayers ? curPlayers.split(',') : [];
+    const curPlayersArr = parseQueryList(curPlayers);
     this.mcServerService.sendPlayerLeave(playerName, curPlayersArr, playTime);
   }
 }

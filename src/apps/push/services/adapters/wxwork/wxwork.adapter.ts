@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CompactLogger } from '@app/common/utils/logger';
 import type {
   DevicePushDetails,
+  ComfyUiPushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
   PushChannelTarget,
@@ -24,6 +25,12 @@ import { WxwMessageType } from '@app/apps/push/types/wxwork-webhook.runtime';
 import { BotKeyLoader } from '../../botkey-loader';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { wxworkMessageBuilder } from './wxwork-message-builder';
+import {
+  formatDuration,
+  formatHourMinute,
+  formatUptime,
+  shortenGitMessage,
+} from '@app/common/utils/format';
 
 @Injectable()
 export class WxworkAdapter implements PushAdapter {
@@ -82,7 +89,7 @@ export class WxworkAdapter implements PushAdapter {
       const timeline = details.precipitationTimeline
         .map((precipitation) => `${precipitation.toFixed(2)}mm`)
         .join('|');
-      const peakAt = this.formatHourMinute(details.peakAt);
+      const peakAt = formatHourMinute(details.peakAt);
       await this.send(
         target,
         this.builder.text(
@@ -247,10 +254,10 @@ export class WxworkAdapter implements PushAdapter {
           type: 'Workflow',
           title: `${icon} [${workflowRun.name}](${workflowRun.html_url}) ${status}`,
           content: [
-            { 提交: this.shortenGitMessage(workflowRun.head_commit.message) },
+            { 提交: shortenGitMessage(workflowRun.head_commit.message) },
             { 仓库: `[${repository.name}](${repository.html_url})` },
             { 分支: `\`${workflowRun.head_branch}\`` },
-            { 执行时长: this.formatDuration(duration) },
+            { 执行时长: formatDuration(duration) },
             ...(failed
               ? ['⚠️ <font color="warning">请及时检查并修复问题</font>']
               : []),
@@ -259,7 +266,7 @@ export class WxworkAdapter implements PushAdapter {
         break;
       }
       default:
-        throw new Error(`Unsupported GitHub webhook event: ${details.event}`);
+        throw new Error('Unsupported GitHub webhook event');
     }
 
     await this.send(target, this.builder.markdownInfo(message));
@@ -348,13 +355,37 @@ export class WxworkAdapter implements PushAdapter {
                   : details.memorySeverity === 'warning'
                     ? `<font color="warning">${memoryUsage}%</font>`
                     : `${memoryUsage}%`,
-              已运行时间: this.formatUptime(details.uptimeSeconds),
+              已运行时间: formatUptime(details.uptimeSeconds),
               系统: details.platform,
               CPU: details.cpuModel,
               核心数: details.cpuCount.toString(),
             },
           },
           { '高 CPU 应用': applicationDetails },
+        ],
+      }),
+    );
+  }
+
+  async sendComfyUi(
+    channel: PushChannelTarget,
+    details: ComfyUiPushDetails,
+  ): Promise<void> {
+    const target = this.normalizeChannel(channel);
+    const success = details.status === 'success';
+    await this.send(
+      target,
+      this.builder.markdownInfo({
+        type: 'ComfyUI',
+        title: `${success ? '✅' : '❌'} ComfyUI ${success ? '生成成功' : '生成失败'}`,
+        content: [
+          { Seed: details.seed.toString() },
+          { 耗时: `${details.elapsed}秒` },
+          { 分辨率: details.res.toString() },
+          { 放大倍率: details.scale.toString() },
+          { 生成时长: `${details.duration}秒` },
+          { 文件名: details.filename },
+          { 路径: details.path },
         ],
       }),
     );
@@ -424,35 +455,5 @@ export class WxworkAdapter implements PushAdapter {
       default:
         return false;
     }
-  }
-
-  //TODO 迁移 util 函数
-  private formatHourMinute(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  }
-
-  private formatDuration(seconds: number): string {
-    return seconds > 0
-      ? `${Math.floor(seconds / 60)}分${seconds % 60}秒`
-      : '未知';
-  }
-
-  private formatUptime(uptimeSeconds: number): string {
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    return `${days}天 ${hours}小时 ${minutes}分钟`;
-  }
-
-  private shortenGitMessage(message: string): string {
-    return message
-      .replace(/:\w+:/g, '')
-      .replace(
-        /[\u{1f300}-\u{1f5ff}\u{1f900}-\u{1f9ff}\u{1f600}-\u{1f64f}\u{1f680}-\u{1f6ff}\u{2600}-\u{26ff}\u{2700}-\u{27bf}\u{1f1e6}-\u{1f1ff}\u{1f191}-\u{1f251}\u{1f004}\u{1f0cf}\u{1f170}-\u{1f171}\u{1f17e}-\u{1f17f}\u{1f18e}\u{3030}\u{2b50}\u{2b55}\u{2934}-\u{2935}\u{2b05}-\u{2b07}\u{2b1b}-\u{2b1c}\u{3297}\u{3299}\u{303d}\u{00a9}\u{00ae}\u{2122}\u{23f3}\u{24c2}\u{23e9}-\u{23ef}\u{25b6}\u{23f8}-\u{23fa}]/gu,
-        '',
-      )
-      .replace(/\n.*/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
   }
 }

@@ -2,6 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { CompactLogger } from '@app/common/utils/logger';
 import type {
   DevicePushDetails,
+  ComfyUiPushDetails,
   GameDailyPushDetails,
   McServerPushDetails,
   RepoPushDetails,
@@ -15,6 +16,12 @@ import type {
 } from '@app/apps/push/types/applications/repo';
 import { GitHubWebhookEvent } from '@app/apps/push/types/applications/repo.runtime';
 import { gameName2GameChannel } from '../applications/game-daily/game-daily.util';
+import {
+  formatDuration,
+  formatHourMinute,
+  formatUptime,
+  shortenGitMessage,
+} from '@app/common/utils/format';
 
 @Injectable()
 export class MarkdownMessageHelper {
@@ -40,12 +47,12 @@ export class MarkdownMessageHelper {
       details.status === 'failed'
         ? this.field('详情', details.failureReason || '无法获取日志')
         : details.detail
-          .flatMap((item) =>
-            Object.entries(item).map(([key, value]) =>
-              this.field(key, value ?? ''),
-            ),
-          )
-          .join('\n');
+            .flatMap((item) =>
+              Object.entries(item).map(([key, value]) =>
+                this.field(key, value ?? ''),
+              ),
+            )
+            .join('\n');
 
     return this.buildMessage(
       title,
@@ -71,7 +78,7 @@ export class MarkdownMessageHelper {
           this.fieldMarkdown('降雨量', timeline),
           this.field(
             '峰值',
-            `${details.peakPrecipitation.toFixed(2)}mm（${this.formatHourMinute(details.peakAt)}）`,
+            `${details.peakPrecipitation.toFixed(2)}mm（${formatHourMinute(details.peakAt)}）`,
           ),
         ].join('\n'),
       );
@@ -107,7 +114,7 @@ export class MarkdownMessageHelper {
       case GitHubWebhookEvent.WORKFLOW_RUN:
         return this.buildWorkflowMarkdown(details);
       default:
-        throw new Error(`Unsupported GitHub webhook event: ${details.event}`);
+        throw new Error('Unsupported GitHub webhook event');
     }
   }
 
@@ -142,15 +149,15 @@ export class MarkdownMessageHelper {
     const memoryUsage = details.memoryUsage.toFixed(2);
     const applicationDetails = details.highCpuApplications.length
       ? details.highCpuApplications
-        .map(
-          (application) =>
-            `- ${this.escapeText(application.name)} (PID ${application.pid})：${application.usage.toFixed(2)}%`,
-        )
-        .join('\n')
+          .map(
+            (application) =>
+              `- ${this.escapeText(application.name)} (PID ${application.pid})：${application.usage.toFixed(2)}%`,
+          )
+          .join('\n')
       : `未发现 CPU 占用率超过 ${details.highCpuApplicationThreshold}% 的应用`;
     const memory =
       details.memorySeverity === 'critical' ||
-        details.memorySeverity === 'warning'
+      details.memorySeverity === 'warning'
         ? `**${memoryUsage}%**`
         : `${memoryUsage}%`;
 
@@ -171,12 +178,29 @@ export class MarkdownMessageHelper {
         this.field('检测时间', details.checkedAt.toLocaleString('zh-CN')),
         [
           this.fieldMarkdown('内存占用', memory),
-          this.field('已运行时间', this.formatUptime(details.uptimeSeconds)),
+          this.field('已运行时间', formatUptime(details.uptimeSeconds)),
           this.field('系统', details.platform),
           this.field('CPU', details.cpuModel),
           this.field('核心数', details.cpuCount.toString()),
         ].join('\n'),
         `${this.field('高 CPU 应用', '')}\n${applicationDetails}`,
+      ].join('\n'),
+    );
+  }
+
+  buildComfyUiMarkdown(details: ComfyUiPushDetails): string {
+    const success = details.status === 'success';
+    return this.buildMessage(
+      `${success ? '✅' : '❌'} ComfyUI ${success ? '生成成功' : '生成失败'}`,
+      `comfyui.${details.status}.png`,
+      [
+        this.field('Seed', details.seed.toString()),
+        this.field('耗时', `${details.elapsed}秒`),
+        this.field('分辨率', details.res.toString()),
+        this.field('放大倍率', details.scale.toString()),
+        this.field('生成时长', `${details.duration}秒`),
+        this.field('文件名', details.filename),
+        this.field('路径', details.path),
       ].join('\n'),
     );
   }
@@ -263,32 +287,32 @@ export class MarkdownMessageHelper {
     const published = action === 'published';
     const fields = published
       ? [
-        this.field('版本名称', release.name || release.tag_name),
-        this.fieldMarkdown(
-          '仓库',
-          this.link(repository.name, repository.html_url),
-        ),
-        this.field(
-          '发布时间',
-          new Date(release.published_at || details.receivedAt).toLocaleString(
-            'zh-CN',
+          this.field('版本名称', release.name || release.tag_name),
+          this.fieldMarkdown(
+            '仓库',
+            this.link(repository.name, repository.html_url),
           ),
-        ),
-        ...(release.body
-          ? [this.field('发布说明', this.truncate(release.body, 300))]
-          : []),
-      ]
+          this.field(
+            '发布时间',
+            new Date(release.published_at || details.receivedAt).toLocaleString(
+              'zh-CN',
+            ),
+          ),
+          ...(release.body
+            ? [this.field('发布说明', this.truncate(release.body, 300))]
+            : []),
+        ]
       : [
-        this.fieldMarkdown(
-          '版本',
-          this.link(release.tag_name, release.html_url),
-        ),
-        this.fieldMarkdown(
-          '仓库',
-          this.link(repository.name, repository.html_url),
-        ),
-        this.field('操作时间', details.receivedAt.toLocaleString('zh-CN')),
-      ];
+          this.fieldMarkdown(
+            '版本',
+            this.link(release.tag_name, release.html_url),
+          ),
+          this.fieldMarkdown(
+            '仓库',
+            this.link(repository.name, repository.html_url),
+          ),
+          this.field('操作时间', details.receivedAt.toLocaleString('zh-CN')),
+        ];
     return this.buildMessage(
       published
         ? `🚀 ${this.link(release.tag_name, release.html_url, '')} 发布`
@@ -304,10 +328,10 @@ export class MarkdownMessageHelper {
     const duration =
       workflowRun.run_started_at && workflowRun.updated_at
         ? Math.round(
-          (new Date(workflowRun.updated_at).getTime() -
-            new Date(workflowRun.run_started_at).getTime()) /
-          1000,
-        )
+            (new Date(workflowRun.updated_at).getTime() -
+              new Date(workflowRun.run_started_at).getTime()) /
+              1000,
+          )
         : 0;
     const succeeded = workflowRun.conclusion === 'success';
     const failed = workflowRun.conclusion === 'failure';
@@ -321,10 +345,7 @@ export class MarkdownMessageHelper {
       `${succeeded ? '✅' : failed ? '❌' : '⚠️'} ${this.link(workflowRun.name, workflowRun.html_url, '')} ${title}`,
       image,
       [
-        this.field(
-          '提交',
-          this.shortenGitMessage(workflowRun.head_commit.message),
-        ),
+        this.field('提交', shortenGitMessage(workflowRun.head_commit.message)),
         this.fieldMarkdown(
           '仓库',
           this.link(repository.name, repository.html_url),
@@ -333,7 +354,7 @@ export class MarkdownMessageHelper {
           '分支',
           `\`${this.escapeText(workflowRun.head_branch)}\``,
         ),
-        this.field('执行时长', this.formatDuration(duration)),
+        this.field('执行时长', formatDuration(duration)),
         ...(failed ? ['> ⚠️ 请及时检查并修复问题'] : []),
       ].join('\n'),
     );
@@ -405,35 +426,5 @@ export class MarkdownMessageHelper {
       unlabeled: '移除标签',
     };
     return labels[action] || action;
-  }
-
-  private formatHourMinute(date: Date): string {
-    return `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`;
-  }
-
-  private formatDuration(seconds: number): string {
-    return seconds > 0
-      ? `${Math.floor(seconds / 60)}分${seconds % 60}秒`
-      : '未知';
-  }
-
-  // TODO 迁移到 utils 里
-  private formatUptime(uptimeSeconds: number): string {
-    const days = Math.floor(uptimeSeconds / 86400);
-    const hours = Math.floor((uptimeSeconds % 86400) / 3600);
-    const minutes = Math.floor((uptimeSeconds % 3600) / 60);
-    return `${days}天 ${hours}小时 ${minutes}分钟`;
-  }
-
-  private shortenGitMessage(message: string): string {
-    return message
-      .replace(/:\w+:/g, '')
-      .replace(
-        /[\u{1f300}-\u{1f5ff}\u{1f900}-\u{1f9ff}\u{1f600}-\u{1f64f}\u{1f680}-\u{1f6ff}\u{2600}-\u{26ff}\u{2700}-\u{27bf}\u{1f1e6}-\u{1f1ff}\u{1f191}-\u{1f251}\u{1f004}\u{1f0cf}\u{1f170}-\u{1f171}\u{1f17e}-\u{1f17f}\u{1f18e}\u{3030}\u{2b50}\u{2b55}\u{2934}-\u{2935}\u{2b05}-\u{2b07}\u{2b1b}-\u{2b1c}\u{3297}\u{3299}\u{303d}\u{00a9}\u{00ae}\u{2122}\u{23f3}\u{24c2}\u{23e9}-\u{23ef}\u{25b6}\u{23f8}-\u{23fa}]/gu,
-        '',
-      )
-      .replace(/\n.*/g, '')
-      .replace(/\s+/g, ' ')
-      .trim();
   }
 }

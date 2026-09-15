@@ -52,6 +52,8 @@ export class QqbotCommandHandlersService {
   private formatSystemInfo(
     info: ReturnType<PushApplicationsDeviceMonitorService['getSystemInfo']>,
   ): string {
+    //TODO 其实不应该重复写一遍返回消息……
+    // 考虑 sendMessage 传入 context 如果有 openid 就往这发……
     return [
       '系统状态',
       `负载：${info.loadAvg.length ? info.loadAvg.map((value) => value.toFixed(2)).join(' / ') : '未知'}`,
