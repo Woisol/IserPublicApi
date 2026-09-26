@@ -7,6 +7,10 @@ import type {
   PushChannelTarget,
   RepoPushDetails,
   WeatherPushDetails,
+  PushMessageDetailsMap,
+  PushMessageType,
+  PushChannelInput,
+  GeneralPushDetails,
 } from '@app/apps/push/types/push-message';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { QqbotMessageService } from './qqbot-message.service';
@@ -36,63 +40,49 @@ export class QqbotAdapter implements PushAdapter {
     return this.botKeyLoader.getAvailableChannels(this.name);
   }
 
-  async sendGameDaily(
-    channel: PushChannelTarget,
-    details: GameDailyPushDetails,
+  async send<T extends PushMessageType>(
+    type: T,
+    channel: PushChannelInput | undefined,
+    details: PushMessageDetailsMap[T],
   ): Promise<void> {
+    const target = typeof channel === 'string' ? channel : channel?.qqbot;
+    if (!target)
+      throw new Error(`Missing qqbot channel for push message: ${type}`);
+    const content = (() => {
+      switch (type) {
+        case 'game-daily':
+          return this.markdownHelper.buildGameDailyMarkdown(
+            details as GameDailyPushDetails,
+          );
+        case 'weather':
+          return this.markdownHelper.buildWeatherMarkdown(
+            details as WeatherPushDetails,
+          );
+        case 'repo':
+          return this.markdownHelper.buildRepoMarkdown(
+            details as RepoPushDetails,
+          );
+        case 'mcserver':
+          return this.markdownHelper.buildMcServerMarkdown(
+            details as McServerPushDetails,
+          );
+        case 'device':
+          return this.markdownHelper.buildDeviceMarkdown(
+            details as DevicePushDetails,
+          );
+        case 'comfyui':
+          return this.markdownHelper.buildComfyUiMarkdown(
+            details as ComfyUiPushDetails,
+          );
+        case 'general':
+          return this.markdownHelper.buildGeneralMarkdown(
+            details as GeneralPushDetails,
+          );
+      }
+    })();
     await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildGameDailyMarkdown(details),
-    );
-  }
-
-  async sendWeather(
-    channel: PushChannelTarget,
-    details: WeatherPushDetails,
-  ): Promise<void> {
-    await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildWeatherMarkdown(details),
-    );
-  }
-
-  async sendRepo(
-    channel: PushChannelTarget,
-    details: RepoPushDetails,
-  ): Promise<void> {
-    await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildRepoMarkdown(details),
-    );
-  }
-
-  async sendMcServer(
-    channel: PushChannelTarget,
-    details: McServerPushDetails,
-  ): Promise<void> {
-    await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildMcServerMarkdown(details),
-    );
-  }
-
-  async sendDevice(
-    channel: PushChannelTarget,
-    details: DevicePushDetails,
-  ): Promise<void> {
-    await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildDeviceMarkdown(details),
-    );
-  }
-
-  async sendComfyUi(
-    channel: PushChannelTarget,
-    details: ComfyUiPushDetails,
-  ): Promise<void> {
-    await this.messageService.sendMarkdown(
-      this.resolveChannel(channel),
-      this.markdownHelper.buildComfyUiMarkdown(details),
+      this.resolveChannel(target),
+      content,
     );
   }
 

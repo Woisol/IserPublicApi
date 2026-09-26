@@ -433,6 +433,7 @@ export class DeviceMonitorService {
   /**
    * 格式化字节数
    */
+  // TODO 迁移到通用工具
   private formatBytes(bytes: number): string {
     const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
     if (bytes === 0) return '0 Bytes';

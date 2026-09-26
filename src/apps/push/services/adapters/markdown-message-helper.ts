@@ -7,6 +7,7 @@ import type {
   McServerPushDetails,
   RepoPushDetails,
   WeatherPushDetails,
+  GeneralPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -203,6 +204,18 @@ export class MarkdownMessageHelper {
         this.field('路径', details.path),
       ].join('\n'),
     );
+  }
+
+  buildGeneralMarkdown(details: GeneralPushDetails): string {
+    const content =
+      typeof details.details === 'string'
+        ? details.details
+        : details.details
+          ? Object.entries(details.details)
+              .map(([key, value]) => this.field(key, value))
+              .join('\n')
+          : '';
+    return this.buildMessage(details.title, details.pic, content);
   }
 
   private buildMemberMarkdown(payload: MemberWebhookPayload): string {

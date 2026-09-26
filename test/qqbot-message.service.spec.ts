@@ -11,11 +11,11 @@ describe('QqbotMessageService', () => {
     };
     const service = new QqbotMessageService(authService as any);
 
-    await service.sendText(
-      { type: 'group', id: 'group-openid' },
-      '收到',
-      { messageId: 'message-id', eventId: 'event-id', msgSeq: 1 },
-    );
+    await service.sendText({ type: 'group', id: 'group-openid' }, '收到', {
+      messageId: 'message-id',
+      eventId: 'event-id',
+      msgSeq: 1,
+    });
 
     const request = (global.fetch as jest.Mock).mock.calls[0];
     expect(request[0]).toBe(

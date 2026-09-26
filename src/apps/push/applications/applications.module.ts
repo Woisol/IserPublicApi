@@ -5,6 +5,7 @@ import {
   PushApplicationsRepoController,
   PushApplicationsWeatherController,
   PushApplicationsComfyUiController,
+  PushGeneralController,
 } from '../controllers';
 import {
   PushApplicationsRepoService,
@@ -39,6 +40,7 @@ import { PushApplicationsGameDailyService } from '../services/applications/game-
     PushApplicationsGameDailyController,
     PushApplicationsMcServerController,
     PushApplicationsComfyUiController,
+    PushGeneralController,
   ],
   providers: [
     BotKeyLoader,

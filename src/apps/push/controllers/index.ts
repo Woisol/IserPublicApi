@@ -5,3 +5,4 @@ export { GameDailyController as PushApplicationsGameDailyController } from './ap
 export { McServerController as PushApplicationsMcServerController } from './applications/mcserver.controller';
 export { ComfyUiController as PushApplicationsComfyUiController } from './applications/comfyui.controller';
 export { QqbotCallbackController } from './callbacks';
+export { GeneralController as PushGeneralController } from './general.controller';

@@ -13,6 +13,8 @@ describe('QqbotAdapter', () => {
     buildRepoMarkdown: jest.fn(() => '# repo'),
     buildMcServerMarkdown: jest.fn(() => '# mcserver'),
     buildDeviceMarkdown: jest.fn(() => '# device'),
+    buildComfyUiMarkdown: jest.fn(() => '# comfyui'),
+    buildGeneralMarkdown: jest.fn(() => '# general'),
   };
 
   beforeEach(() => {
@@ -28,18 +30,18 @@ describe('QqbotAdapter', () => {
     );
     const channel = { type: 'group' as const, id: 'group-openid' };
 
-    await adapter.sendGameDaily('general', { wakeupSuccessful: false });
-    await adapter.sendWeather('weather', {
+    await adapter.send('game-daily', 'general', { wakeupSuccessful: false });
+    await adapter.send('weather', 'weather', {
       kind: 'daily-rain',
       periods: [],
     });
-    await adapter.sendRepo('repo', {
+    await adapter.send('repo', 'repo', {
       event: 'member' as any,
       payload: {},
       receivedAt: new Date(),
     });
-    await adapter.sendMcServer('mcserver', { event: 'server_started' });
-    await adapter.sendDevice('monitor', {
+    await adapter.send('mcserver', 'mcserver', { event: 'server_started' });
+    await adapter.send('device', 'monitor', {
       cpuUsage: 90,
       cpuSeverity: 'warning',
       memoryUsage: 30,
@@ -64,5 +66,27 @@ describe('QqbotAdapter', () => {
     expect(markdownHelper.buildRepoMarkdown).toHaveBeenCalled();
     expect(markdownHelper.buildMcServerMarkdown).toHaveBeenCalled();
     expect(markdownHelper.buildDeviceMarkdown).toHaveBeenCalled();
+  });
+
+  it('sends general messages through the fixed general channel', async () => {
+    const adapter = new QqbotAdapter(
+      messageService as any,
+      botKeyLoader as any,
+      markdownHelper as any,
+    );
+
+    await adapter.send('general', 'general', {
+      title: '服务器状态',
+      details: { 状态: '运行中' },
+    });
+
+    expect(markdownHelper.buildGeneralMarkdown).toHaveBeenCalledWith({
+      title: '服务器状态',
+      details: { 状态: '运行中' },
+    });
+    expect(messageService.sendMarkdown).toHaveBeenLastCalledWith(
+      { type: 'group', id: 'group-openid' },
+      '# general',
+    );
   });
 });

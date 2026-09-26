@@ -20,6 +20,7 @@ export type PushChannels = Partial<{
   qqbot: QqbotChannel;
 }>;
 
+// 如果为 str，则不论选择什么渠道都尝试通过 str 获取渠道名
 export type PushChannelInput = string | PushChannels;
 
 export type GameDailyPushDetails =
@@ -84,6 +85,12 @@ export interface ComfyUiPushDetails {
   path: string;
 }
 
+export interface GeneralPushDetails {
+  title: string;
+  pic?: string;
+  details?: string | Record<string, string>;
+}
+
 export interface PushMessageDetailsMap {
   'game-daily': GameDailyPushDetails;
   weather: WeatherPushDetails;
@@ -91,6 +98,7 @@ export interface PushMessageDetailsMap {
   mcserver: McServerPushDetails;
   device: DevicePushDetails;
   comfyui: ComfyUiPushDetails;
+  general: GeneralPushDetails;
 }
 
 export type PushMessageType = keyof PushMessageDetailsMap;

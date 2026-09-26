@@ -10,7 +10,9 @@ import { CompactLogger } from '@app/common/utils/logger';
 
 @Injectable()
 export class QqbotCommandHandlersService {
-  private readonly logger: CompactLogger = new CompactLogger(QqbotCommandHandlersService.name);
+  private readonly logger: CompactLogger = new CompactLogger(
+    QqbotCommandHandlersService.name,
+  );
   constructor(
     router: QqbotCommandRouterService,
     deviceService: PushApplicationsDeviceMonitorService,

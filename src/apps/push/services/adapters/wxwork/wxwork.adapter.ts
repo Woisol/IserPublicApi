@@ -8,6 +8,10 @@ import type {
   PushChannelTarget,
   RepoPushDetails,
   WeatherPushDetails,
+  PushMessageDetailsMap,
+  PushMessageType,
+  PushChannelInput,
+  GeneralPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -25,6 +29,7 @@ import { WxwMessageType } from '@app/apps/push/types/wxwork-webhook.runtime';
 import { BotKeyLoader } from '../../botkey-loader';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { wxworkMessageBuilder } from './wxwork-message-builder';
+import { MarkdownMessageHelper } from '../markdown-message-helper';
 import {
   formatDuration,
   formatHourMinute,
@@ -39,10 +44,47 @@ export class WxworkAdapter implements PushAdapter {
   private readonly builder = wxworkMessageBuilder();
   private readonly timeout = 10000;
 
-  constructor(private readonly botKeyLoader: BotKeyLoader) {}
+  constructor(
+    private readonly botKeyLoader: BotKeyLoader,
+    private readonly markdownHelper: MarkdownMessageHelper,
+  ) {}
 
   getAvailableChannels(): string[] {
     return this.botKeyLoader.getAvailableChannels(this.name);
+  }
+
+  async send<T extends PushMessageType>(
+    type: T,
+    channels: PushChannelInput | undefined,
+    details: PushMessageDetailsMap[T],
+  ): Promise<void> {
+    const channel = typeof channels === 'string' ? channels : channels?.wxwork;
+    if (!channel) {
+      throw new Error(`Missing wxwork channel for push message: ${type}`);
+    }
+    switch (type) {
+      case 'game-daily':
+        return this.sendGameDaily(channel, details as GameDailyPushDetails);
+      case 'weather':
+        return this.sendWeather(channel, details as WeatherPushDetails);
+      case 'repo':
+        return this.sendRepo(channel, details as RepoPushDetails);
+      case 'mcserver':
+        return this.sendMcServer(channel, details as McServerPushDetails);
+      case 'device':
+        return this.sendDevice(channel, details as DevicePushDetails);
+      case 'comfyui':
+        return this.sendComfyUi(channel, details as ComfyUiPushDetails);
+      case 'general':
+        await this.sendMessageRequest(
+          this.normalizeChannel(channel),
+          this.builder.markdown(
+            this.markdownHelper.buildGeneralMarkdown(
+              details as GeneralPushDetails,
+            ),
+          ),
+        );
+    }
   }
 
   async sendGameDaily(
@@ -51,7 +93,7 @@ export class WxworkAdapter implements PushAdapter {
   ): Promise<void> {
     const target = this.normalizeChannel(channel);
     if (details.wakeupSuccessful === false) {
-      await this.send(
+      await this.sendMessageRequest(
         target,
         this.builder.markdownInfo({
           type: 'Wakeup',
@@ -73,7 +115,10 @@ export class WxworkAdapter implements PushAdapter {
         ? [{ 详情: details.failureReason || '无法获取日志' }]
         : details.detail;
 
-    await this.send(target, this.builder.markdownInfo({ title, content }));
+    await this.sendMessageRequest(
+      target,
+      this.builder.markdownInfo({ title, content }),
+    );
   }
 
   async sendWeather(
@@ -90,7 +135,7 @@ export class WxworkAdapter implements PushAdapter {
         .map((precipitation) => `${precipitation.toFixed(2)}mm`)
         .join('|');
       const peakAt = formatHourMinute(details.peakAt);
-      await this.send(
+      await this.sendMessageRequest(
         target,
         this.builder.text(
           `⚠️ 预计 ${minutesUntilRain}min 后开始下雨\n预报降雨量 ${timeline}，峰值 ${details.peakPrecipitation.toFixed(2)}mm/5min（${peakAt}）`,
@@ -108,7 +153,10 @@ export class WxworkAdapter implements PushAdapter {
           : `${startHour}-${endHour}点`;
       })
       .join('、');
-    await this.send(target, this.builder.text(`⚠️ 今天${periods}可能下雨`));
+    await this.sendMessageRequest(
+      target,
+      this.builder.text(`⚠️ 今天${periods}可能下雨`),
+    );
   }
 
   async sendRepo(
@@ -269,7 +317,7 @@ export class WxworkAdapter implements PushAdapter {
         throw new Error('Unsupported GitHub webhook event');
     }
 
-    await this.send(target, this.builder.markdownInfo(message));
+    await this.sendMessageRequest(target, this.builder.markdownInfo(message));
   }
 
   async sendMcServer(
@@ -278,14 +326,14 @@ export class WxworkAdapter implements PushAdapter {
   ): Promise<void> {
     const target = this.normalizeChannel(channel);
     if (details.event === 'server_started') {
-      await this.send(
+      await this.sendMessageRequest(
         target,
         this.builder.markdown('「Server」✅服务器启动成功'),
       );
       return;
     }
     if (details.event === 'server_stopped') {
-      await this.send(
+      await this.sendMessageRequest(
         target,
         this.builder.markdown('「Server」❌服务器已关闭'),
       );
@@ -297,7 +345,7 @@ export class WxworkAdapter implements PushAdapter {
       ? players.join(' | ')
       : '当前没有玩家在线';
     const joined = details.event === 'player_joined';
-    await this.send(
+    await this.sendMessageRequest(
       target,
       this.builder.markdownInfo({
         type: 'Player',
@@ -331,7 +379,7 @@ export class WxworkAdapter implements PushAdapter {
           状态: `未发现 CPU 占用率超过 ${details.highCpuApplicationThreshold}% 的应用`,
         };
 
-    await this.send(
+    await this.sendMessageRequest(
       target,
       this.builder.markdownInfo({
         type: 'Device',
@@ -373,7 +421,7 @@ export class WxworkAdapter implements PushAdapter {
   ): Promise<void> {
     const target = this.normalizeChannel(channel);
     const success = details.status === 'success';
-    await this.send(
+    await this.sendMessageRequest(
       target,
       this.builder.markdownInfo({
         type: 'ComfyUI',
@@ -391,7 +439,10 @@ export class WxworkAdapter implements PushAdapter {
     );
   }
 
-  private async send(channel: string, message: WxwMessage): Promise<void> {
+  private async sendMessageRequest(
+    channel: string,
+    message: WxwMessage,
+  ): Promise<void> {
     if (!this.validateMessage(message)) {
       throw new Error('Invalid wxwork message format');
     }

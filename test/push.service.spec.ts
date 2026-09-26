@@ -25,12 +25,7 @@ describe('PushService', () => {
   it('routes a game daily message to the wxwork adapter channel', async () => {
     const adapter = {
       getAvailableChannels: jest.fn(),
-      sendGameDaily: jest.fn(),
-      sendWeather: jest.fn(),
-      sendRepo: jest.fn(),
-      sendMcServer: jest.fn(),
-      sendDevice: jest.fn(),
-      sendComfyUi: jest.fn(),
+      send: jest.fn(),
       name: 'wxwork',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);
@@ -42,18 +37,13 @@ describe('PushService', () => {
 
     await service.sendMessage('game-daily', 'genshin', details);
 
-    expect(adapter.sendGameDaily).toHaveBeenCalledWith('genshin', details);
+    expect(adapter.send).toHaveBeenCalledWith('game-daily', 'genshin', details);
   });
 
   it('skips sending when the active adapter has no target channel', async () => {
     const adapter = {
       getAvailableChannels: jest.fn(),
-      sendGameDaily: jest.fn(),
-      sendWeather: jest.fn(),
-      sendRepo: jest.fn(),
-      sendMcServer: jest.fn(),
-      sendDevice: jest.fn(),
-      sendComfyUi: jest.fn(),
+      send: jest.fn(),
       name: 'wxwork',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);
@@ -67,19 +57,18 @@ describe('PushService', () => {
         peakAt: new Date(),
       }),
     ).resolves.toBeUndefined();
-    expect(adapter.sendWeather).not.toHaveBeenCalled();
+    expect(adapter.send).toHaveBeenCalledWith(
+      'weather',
+      undefined,
+      expect.any(Object),
+    );
   });
 
   it('uses the configured adapter name to select its channel', async () => {
     process.env.WEBHOOK_SEND_ADAPTER = 'qqbot';
     const adapter = {
       getAvailableChannels: jest.fn(),
-      sendGameDaily: jest.fn(),
-      sendWeather: jest.fn(),
-      sendRepo: jest.fn(),
-      sendMcServer: jest.fn(),
-      sendDevice: jest.fn(),
-      sendComfyUi: jest.fn(),
+      send: jest.fn(),
       name: 'qqbot',
     } as unknown as PushAdapter;
     const service = new PushService([adapter]);
@@ -90,7 +79,11 @@ describe('PushService', () => {
 
     await service.sendMessage('weather', { qqbot: 'weather-group' }, details);
 
-    expect(adapter.sendWeather).toHaveBeenCalledWith('weather-group', details);
+    expect(adapter.send).toHaveBeenCalledWith(
+      'weather',
+      { qqbot: 'weather-group' },
+      details,
+    );
   });
 
   it('throws when WEBHOOK_SEND_ADAPTER is missing', () => {

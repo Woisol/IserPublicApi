@@ -1,24 +1,14 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { CompactLogger } from '@app/common/utils/logger';
 import type {
-  DevicePushDetails,
-  ComfyUiPushDetails,
-  GameDailyPushDetails,
-  McServerPushDetails,
   PushChannelInput,
-  PushChannelTarget,
   PushMessageDetailsMap,
   PushMessageType,
-  RepoPushDetails,
-  WeatherPushDetails,
 } from '@app/apps/push/types/push-message';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { PUSH_ADAPTERS } from './adapters';
 
 @Injectable()
 export class PushService {
-  private readonly logger = new CompactLogger(PushService.name);
-  private readonly sendAdapter: PushAdapter['name'];
   private readonly adapter: PushAdapter;
 
   // 这里通过 Symbol 作为注入标识，是为了让 Nest 能按唯一 token 注入适配器数组。
@@ -40,7 +30,6 @@ export class PushService {
       );
     }
 
-    this.sendAdapter = adapter.name;
     this.adapter = adapter;
   }
 
@@ -53,82 +42,6 @@ export class PushService {
     channels: PushChannelInput | undefined,
     details: PushMessageDetailsMap[T],
   ): Promise<void> {
-    switch (type) {
-      case 'game-daily':
-        return this.sendGameDaily(channels, details as GameDailyPushDetails);
-      case 'weather':
-        return this.sendWeather(channels, details as WeatherPushDetails);
-      case 'repo':
-        return this.sendRepo(channels, details as RepoPushDetails);
-      case 'mcserver':
-        return this.sendMcServer(channels, details as McServerPushDetails);
-      case 'device':
-        return this.sendDevice(channels, details as DevicePushDetails);
-      case 'comfyui':
-        return this.sendComfyUi(channels, details as ComfyUiPushDetails);
-    }
-  }
-
-  private async sendGameDaily(
-    channels: PushChannelInput | undefined,
-    details: GameDailyPushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('game-daily', channels);
-    if (channel) await this.adapter.sendGameDaily(channel, details);
-  }
-
-  private async sendWeather(
-    channels: PushChannelInput | undefined,
-    details: WeatherPushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('weather', channels);
-    if (channel) await this.adapter.sendWeather(channel, details);
-  }
-
-  private async sendRepo(
-    channels: PushChannelInput | undefined,
-    details: RepoPushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('repo', channels);
-    if (channel) await this.adapter.sendRepo(channel, details);
-  }
-
-  private async sendMcServer(
-    channels: PushChannelInput | undefined,
-    details: McServerPushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('mcserver', channels);
-    if (channel) await this.adapter.sendMcServer(channel, details);
-  }
-
-  private async sendDevice(
-    channels: PushChannelInput | undefined,
-    details: DevicePushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('device', channels);
-    if (channel) await this.adapter.sendDevice(channel, details);
-  }
-
-  private async sendComfyUi(
-    channels: PushChannelInput | undefined,
-    details: ComfyUiPushDetails,
-  ): Promise<void> {
-    const channel = this.getChannel('comfyui', channels);
-    if (channel) await this.adapter.sendComfyUi(channel, details);
-  }
-
-  private getChannel(
-    type: PushMessageType,
-    channels: PushChannelInput | undefined,
-  ): PushChannelTarget | undefined {
-    const channel =
-      typeof channels === 'string' ? channels : channels?.[this.sendAdapter];
-    if (!channel) {
-      this.logger.error(
-        `Missing ${this.sendAdapter} channel for push message: ${type}`,
-      );
-      return undefined;
-    }
-    return channel;
+    return this.adapter.send(type, channels, details);
   }
 }
