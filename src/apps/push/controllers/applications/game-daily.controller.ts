@@ -1,4 +1,4 @@
-import { Controller, Get, Param, Post, Query } from '@nestjs/common';
+import { Body, Controller, Get, Post, Query } from '@nestjs/common';
 import { PushApplicationsGameDailyService } from '../../services/applications/game-daily/game-daily.service';
 
 @Controller('push/game-daily')
@@ -12,12 +12,13 @@ export class GameDailyController {
   ) {}
 
   @Get()
-  gameDailyCheck(@Query('name') name: string) {
-    return this.gameDailyService.processGameDailyCheck(name);
-  }
-
   @Post()
-  gameDailyCheck_Post(@Query('name') name: string) {
+  gameDailyCheck(
+    @Query() query: { name?: string },
+    @Body() body: { name?: string },
+  ) {
+    const input = body && Object.keys(body).length ? body : query;
+    const name = input.name;
     return this.gameDailyService.processGameDailyCheck(name);
   }
 

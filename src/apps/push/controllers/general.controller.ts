@@ -13,17 +13,18 @@ export class GeneralController {
   constructor(private readonly pushService: PushService) {}
 
   @Get()
-  sendByQuery(@Query() query: GeneralQuery) {
+  @Post()
+  send(
+    @Query() query: GeneralQuery,
+    @Body() body: Partial<GeneralPushDetails>,
+  ) {
+    const details =
+      body && Object.keys(body).length ? body : this.parseDetails(query);
     return this.pushService.sendMessage(
       'general',
       'general',
-      this.parseDetails(query),
+      details as GeneralPushDetails,
     );
-  }
-
-  @Post()
-  sendByBody(@Body() body: GeneralPushDetails) {
-    return this.pushService.sendMessage('general', 'general', body);
   }
 
   private parseDetails(query: GeneralQuery): GeneralPushDetails {

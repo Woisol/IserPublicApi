@@ -46,30 +46,50 @@ export class McServerController {
     }
   }
   @Get('started')
+  @Post('started')
   serverStarted() {
     this.mcServerService.sendServerStart();
   }
 
   @Get('stopped')
+  @Post('stopped')
   serverStopped() {
     this.mcServerService.sendServerStop();
   }
 
   @Get('player-join')
+  @Post('player-join')
   playerJoin(
-    @Query('playerName') playerName: string,
-    @Query('curPlayers') curPlayers: string,
+    @Query() query: { playerName?: string; currentPlayers?: string },
+    @Body() body: { playerName?: string; currentPlayers?: string },
   ) {
-    const curPlayersArr = parseQueryList(curPlayers);
-    this.mcServerService.sendPlayerJoin(playerName, curPlayersArr);
+    const input = body && Object.keys(body).length ? body : query;
+    const playerName = input.playerName as string;
+    const currentPlayers = input.currentPlayers as string;
+    const currentPlayersArr = parseQueryList(currentPlayers);
+    this.mcServerService.sendPlayerJoin(playerName, currentPlayersArr);
   }
 
   @Get('player-leave')
+  @Post('player-leave')
   playerLeave(
-    @Query('playerName') playerName: string,
-    @Query('curPlayers') curPlayers: string,
-    @Query('playTime') playTime: string,
+    @Query()
+    query: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
+    @Body()
+    body: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
   ) {
+    const input = body && Object.keys(body).length ? body : query;
+    const playerName = input.playerName as string;
+    const curPlayers = input.curPlayers as string;
+    const playTime = input.playTime as string;
     const curPlayersArr = parseQueryList(curPlayers);
     this.mcServerService.sendPlayerLeave(playerName, curPlayersArr, playTime);
   }
