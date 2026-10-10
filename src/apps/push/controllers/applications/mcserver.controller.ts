@@ -46,22 +46,52 @@ export class McServerController {
     }
   }
   @Get('started')
+  serverStartedByGet() {
+    return this.serverStarted();
+  }
+
   @Post('started')
-  serverStarted() {
+  serverStartedByPost() {
+    return this.serverStarted();
+  }
+
+  private serverStarted() {
     this.mcServerService.sendServerStart();
   }
 
   @Get('stopped')
+  serverStoppedByGet() {
+    return this.serverStopped();
+  }
+
   @Post('stopped')
-  serverStopped() {
+  serverStoppedByPost() {
+    return this.serverStopped();
+  }
+
+  private serverStopped() {
     this.mcServerService.sendServerStop();
   }
 
   @Get('player-join')
-  @Post('player-join')
-  playerJoin(
+  playerJoinByGet(
     @Query() query: { playerName?: string; currentPlayers?: string },
     @Body() body: { playerName?: string; currentPlayers?: string },
+  ) {
+    return this.playerJoin(query, body);
+  }
+
+  @Post('player-join')
+  playerJoinByPost(
+    @Query() query: { playerName?: string; currentPlayers?: string },
+    @Body() body: { playerName?: string; currentPlayers?: string },
+  ) {
+    return this.playerJoin(query, body);
+  }
+
+  private playerJoin(
+    query: { playerName?: string; currentPlayers?: string },
+    body: { playerName?: string; currentPlayers?: string },
   ) {
     const input = body && Object.keys(body).length ? body : query;
     const playerName = input.playerName as string;
@@ -71,8 +101,7 @@ export class McServerController {
   }
 
   @Get('player-leave')
-  @Post('player-leave')
-  playerLeave(
+  playerLeaveByGet(
     @Query()
     query: {
       playerName?: string;
@@ -80,6 +109,39 @@ export class McServerController {
       playTime?: string;
     },
     @Body()
+    body: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
+  ) {
+    return this.playerLeave(query, body);
+  }
+
+  @Post('player-leave')
+  playerLeaveByPost(
+    @Query()
+    query: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
+    @Body()
+    body: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
+  ) {
+    return this.playerLeave(query, body);
+  }
+
+  private playerLeave(
+    query: {
+      playerName?: string;
+      curPlayers?: string;
+      playTime?: string;
+    },
     body: {
       playerName?: string;
       curPlayers?: string;

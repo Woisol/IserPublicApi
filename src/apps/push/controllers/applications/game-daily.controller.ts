@@ -12,10 +12,24 @@ export class GameDailyController {
   ) {}
 
   @Get()
-  @Post()
-  gameDailyCheck(
+  gameDailyCheckByGet(
     @Query() query: { name?: string },
     @Body() body: { name?: string },
+  ) {
+    return this.gameDailyCheck(query, body);
+  }
+
+  @Post()
+  gameDailyCheckByPost(
+    @Query() query: { name?: string },
+    @Body() body: { name?: string },
+  ) {
+    return this.gameDailyCheck(query, body);
+  }
+
+  private gameDailyCheck(
+    query: { name?: string },
+    body: { name?: string },
   ) {
     const input = body && Object.keys(body).length ? body : query;
     const name = input.name;

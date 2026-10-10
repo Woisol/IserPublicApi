@@ -14,10 +14,24 @@ export class ComfyUiController {
   ) {}
 
   @Get()
-  @Post()
-  processPush(
+  processPushByGet(
     @Query() query: Record<string, string>,
     @Body() body: Record<string, string>,
+  ) {
+    return this.processPush(query, body);
+  }
+
+  @Post()
+  processPushByPost(
+    @Query() query: Record<string, string>,
+    @Body() body: Record<string, string>,
+  ) {
+    return this.processPush(query, body);
+  }
+
+  private processPush(
+    query: Record<string, string>,
+    body: Record<string, string>,
   ) {
     const input = body && Object.keys(body).length ? body : query;
     const details = {
