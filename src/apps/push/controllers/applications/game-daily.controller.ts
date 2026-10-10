@@ -27,12 +27,9 @@ export class GameDailyController {
     return this.gameDailyCheck(query, body);
   }
 
-  private gameDailyCheck(
-    query: { name?: string },
-    body: { name?: string },
-  ) {
+  private gameDailyCheck(query: { name?: string }, body: { name?: string }) {
     const input = body && Object.keys(body).length ? body : query;
-    const name = input.name;
+    const name = input.name ?? query.name;
     return this.gameDailyService.processGameDailyCheck(name);
   }
 
