@@ -92,7 +92,7 @@ export class WxworkAdapter implements PushAdapter {
     details: GameDailyPushDetails,
   ): Promise<void> {
     const target = this.normalizeChannel(channel);
-    if (details.wakeupSuccessful === false) {
+    if (!('status' in details)) {
       await this.sendMessageRequest(
         target,
         this.builder.markdownInfo({
@@ -100,6 +100,14 @@ export class WxworkAdapter implements PushAdapter {
           title: '❌ 电脑唤醒失败',
           content: ['⚠️ <font color="warning">请及时检查并修复问题</font>'],
         }),
+      );
+      return;
+    }
+
+    if (details.status === 'started') {
+      await this.sendMessageRequest(
+        target,
+        this.builder.markdownInfo({ title: '⏳ 每日任务已启动', content: [] }),
       );
       return;
     }

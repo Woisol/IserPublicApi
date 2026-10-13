@@ -6,10 +6,7 @@ import {
   GameLogFetchRawOption,
   GameLogFetchResult,
 } from '@app/apps/push/types/applications/game-daily';
-import {
-  findGameLogFetchConfig,
-  gameName2GameChannel,
-} from './game-daily.util';
+import { findGameLogFetchConfig } from './game-daily.util';
 import { exec } from 'child_process';
 
 /**

@@ -8,8 +8,6 @@ import type {
   RepoPushDetails,
   WeatherPushDetails,
   GeneralPushDetails,
-  GameDailyPushDetailStarted,
-  WakeUpPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -32,41 +30,39 @@ export class MarkdownMessageHelper {
   private missingBaseUrlWarned = false;
 
   buildGameDailyMarkdown(details: GameDailyPushDetails): string {
-    if ((details as GameDailyPushDetailStarted).status === 'started') {
-      return this.buildMessage('⏳ 每日任务已启动');
-    }
+    if ('status' in details) {
+      if (details.status === 'started') {
+        return this.buildMessage('⏳ 每日任务已启动');
+      }
 
-    if ((details as WakeUpPushDetails).wakeupSuccessful === false) {
+      const title =
+        details.status === 'finished'
+          ? `✅ ${this.escapeText(details.gameName)} 每日任务已完成`
+          : details.status === 'unfinished'
+            ? `❌ ${this.escapeText(details.gameName)} 每日任务未完成`
+            : `⚠️ ${this.escapeText(details.gameName)} 每日完成情况获取失败`;
+      const detail =
+        details.status === 'failed'
+          ? this.field('详情', details.failureReason || '无法获取日志')
+          : details.detail
+              .flatMap((item) =>
+                Object.entries(item).map(([key, value]) =>
+                  this.field(key, value ?? ''),
+                ),
+              )
+              .join('\n');
+
       return this.buildMessage(
-        '❌ 电脑唤醒失败',
-        'wakeup.failed.png',
-        '> 请及时检查并修复问题',
+        title,
+        `games/${this.gameImageSlug(details.gameName)}.${details.status}.png`,
+        detail,
       );
     }
 
-    const title =
-      details.status === 'finished'
-        ? `✅ ${this.escapeText(details.gameName)} 每日任务已完成`
-        : details.status === 'unfinished'
-          ? `❌ ${this.escapeText(details.gameName)} 每日任务未完成`
-          : details.status === 'failed'
-            ? `⚠️ ${this.escapeText(details.gameName)} 每日完成情况获取失败`
-            : `⏳ 每日任务已启动`;
-    const detail =
-      details.status === 'failed'
-        ? this.field('详情', details.failureReason || '无法获取日志')
-        : details.detail
-            .flatMap((item) =>
-              Object.entries(item).map(([key, value]) =>
-                this.field(key, value ?? ''),
-              ),
-            )
-            .join('\n');
-
     return this.buildMessage(
-      title,
-      `games/${this.gameImageSlug(details.gameName)}.${details.status}.png`,
-      detail,
+      '❌ 电脑唤醒失败',
+      'wakeup.failed.png',
+      '> 请及时检查并修复问题',
     );
   }
 
