@@ -1,3 +1,4 @@
+// TODO 考虑统计发送消息数量……
 export { WxworkAdapter } from './wxwork/wxwork.adapter';
 export {
   QqbotAdapter,

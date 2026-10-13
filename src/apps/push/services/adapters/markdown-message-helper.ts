@@ -8,6 +8,8 @@ import type {
   RepoPushDetails,
   WeatherPushDetails,
   GeneralPushDetails,
+  GameDailyPushDetailStarted,
+  WakeUpPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -30,7 +32,11 @@ export class MarkdownMessageHelper {
   private missingBaseUrlWarned = false;
 
   buildGameDailyMarkdown(details: GameDailyPushDetails): string {
-    if (details.wakeupSuccessful === false) {
+    if ((details as GameDailyPushDetailStarted).status === 'started') {
+      return this.buildMessage('⏳ 每日任务已启动');
+    }
+
+    if ((details as WakeUpPushDetails).wakeupSuccessful === false) {
       return this.buildMessage(
         '❌ 电脑唤醒失败',
         'wakeup.failed.png',
@@ -43,7 +49,9 @@ export class MarkdownMessageHelper {
         ? `✅ ${this.escapeText(details.gameName)} 每日任务已完成`
         : details.status === 'unfinished'
           ? `❌ ${this.escapeText(details.gameName)} 每日任务未完成`
-          : `⚠️ ${this.escapeText(details.gameName)} 每日完成情况获取失败`;
+          : details.status === 'failed'
+            ? `⚠️ ${this.escapeText(details.gameName)} 每日完成情况获取失败`
+            : `⏳ 每日任务已启动`;
     const detail =
       details.status === 'failed'
         ? this.field('详情', details.failureReason || '无法获取日志')

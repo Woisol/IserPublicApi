@@ -105,7 +105,7 @@ export class PushApplicationsGameDailyService {
   /**
    * 获取特定游戏每日完成情况
    */
-  async queryGameDailyCheck(gameName: string) {
+  async queryGameDailyCheck(gameName?: string) {
     if (!gameName) {
       this.logger.error('缺少名称查询 name');
       throw new HttpException('缺少名称查询 name', 400);
@@ -152,15 +152,25 @@ export class PushApplicationsGameDailyService {
   /**
    * 获取特定游戏每日完成情况并发送通知
    */
-  async processGameDailyCheck(gameName: string) {
+  async processGameDailyCheck(gameName?: string) {
     const details = await this.queryGameDailyCheck(gameName);
     await this.pushService.sendMessage(
       'game-daily',
-      gameName2GameChannel(gameName),
+      // dTODO 其实不太必要每个游戏特定 channel 的哈……
+      'game_daily',
       details,
     );
     this.logger.info('已发送每日任务情况通知');
     return details;
+  }
+
+  /**
+   * 开始进行游戏每日
+   */
+  async startGameDaily() {
+    await this.pushService.sendMessage('game-daily', 'game_daily', {
+      status: 'started',
+    });
   }
 
   /**

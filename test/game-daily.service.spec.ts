@@ -44,7 +44,7 @@ describe('PushApplicationsGameDailyService', () => {
     await service.processGameDailyCheck('Genshin');
     expect(pushService.sendMessage).toHaveBeenCalledWith(
       'game-daily',
-      'genshin',
+      'game_daily',
       expect.objectContaining({ gameName: 'Genshin', status: 'finished' }),
     );
   });

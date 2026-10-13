@@ -28,10 +28,7 @@ export class GeneralController {
     return this.send(query, body);
   }
 
-  private send(
-    query: GeneralQuery,
-    body: Partial<GeneralPushDetails>,
-  ) {
+  private send(query: GeneralQuery, body: Partial<GeneralPushDetails>) {
     const details =
       body && Object.keys(body).length ? body : this.parseDetails(query);
     return this.pushService.sendMessage(

@@ -23,17 +23,22 @@ export type PushChannels = Partial<{
 // 如果为 str，则不论选择什么渠道都尝试通过 str 获取渠道名
 export type PushChannelInput = string | PushChannels;
 
+export type WakeUpPushDetails = {
+  wakeupSuccessful: boolean;
+};
+export type GameDailyPushDetailStarted = {
+  status: 'started';
+};
 export type GameDailyPushDetails =
-  | {
-      wakeupSuccessful: false;
-    }
+  | WakeUpPushDetails
   | {
       gameName: string;
       status: 'finished' | 'unfinished' | 'failed';
       detail: GameLogDetailResult[];
       wakeupSuccessful?: true;
       failureReason?: string;
-    };
+    }
+  | GameDailyPushDetailStarted;
 
 export type WeatherPushDetails =
   | {
