@@ -6,7 +6,7 @@ import type { WeatherRainPeriod } from './applications/weather';
 
 export type PushChannel = 'wxwork' | 'qqbot';
 
-export type AgentPushKind = 'done' | 'ask' | 'question' | 'error';
+export type AgentPushKind = 'done' | 'ask' | 'question' | 'error' | 'test';
 
 export interface AgentPushDetails {
   kind: AgentPushKind;

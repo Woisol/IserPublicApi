@@ -217,6 +217,7 @@ export class MarkdownMessageHelper {
       ask: { title: '⚠️ 等待审批', pic: 'dsh.confirm.png' },
       question: { title: '❓ 等待回答', pic: 'dsh.confirm.png' },
       error: { title: '❌ 任务出错', pic: 'dsh.error.png' },
+      test: { title: '🧪 测试通知' },
     }[details.kind];
     return this.buildMessage(
       notification.title,

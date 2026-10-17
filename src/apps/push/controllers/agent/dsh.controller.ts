@@ -7,6 +7,7 @@ const DSH_NOTIFICATION_KINDS: readonly AgentPushKind[] = [
   'ask',
   'question',
   'error',
+  'test',
 ];
 
 @Controller('push/agent/dsh')
