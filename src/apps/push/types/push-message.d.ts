@@ -6,6 +6,13 @@ import type { WeatherRainPeriod } from './applications/weather';
 
 export type PushChannel = 'wxwork' | 'qqbot';
 
+export type AgentPushKind = 'done' | 'ask' | 'question' | 'error';
+
+export interface AgentPushDetails {
+  kind: AgentPushKind;
+  message: string;
+}
+
 export type QqbotChannel =
   | string
   | {
@@ -104,6 +111,7 @@ export interface PushMessageDetailsMap {
   device: DevicePushDetails;
   comfyui: ComfyUiPushDetails;
   general: GeneralPushDetails;
+  agent: AgentPushDetails;
 }
 
 export type PushMessageType = keyof PushMessageDetailsMap;

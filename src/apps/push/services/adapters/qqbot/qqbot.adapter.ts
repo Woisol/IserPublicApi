@@ -11,6 +11,7 @@ import type {
   PushMessageType,
   PushChannelInput,
   GeneralPushDetails,
+  AgentPushDetails,
 } from '@app/apps/push/types/push-message';
 import type { PushAdapter } from '@app/apps/push/types/push-adapter';
 import { QqbotMessageService } from './qqbot-message.service';
@@ -73,6 +74,10 @@ export class QqbotAdapter implements PushAdapter {
         case 'comfyui':
           return this.markdownHelper.buildComfyUiMarkdown(
             details as ComfyUiPushDetails,
+          );
+        case 'agent':
+          return this.markdownHelper.buildAgentMarkdown(
+            details as AgentPushDetails,
           );
         case 'general':
           return this.markdownHelper.buildGeneralMarkdown(

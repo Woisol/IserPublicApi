@@ -12,6 +12,7 @@ import type {
   PushMessageType,
   PushChannelInput,
   GeneralPushDetails,
+  AgentPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -75,6 +76,14 @@ export class WxworkAdapter implements PushAdapter {
         return this.sendDevice(channel, details as DevicePushDetails);
       case 'comfyui':
         return this.sendComfyUi(channel, details as ComfyUiPushDetails);
+      case 'agent':
+        await this.sendMessageRequest(
+          this.normalizeChannel(channel),
+          this.builder.markdown(
+            this.markdownHelper.buildAgentMarkdown(details as AgentPushDetails),
+          ),
+        );
+        return;
       case 'general':
         await this.sendMessageRequest(
           this.normalizeChannel(channel),

@@ -4,3 +4,4 @@ export { DeviceMonitorService as PushApplicationsDeviceMonitorService } from './
 export { PushApplicationsGameDailyService } from './game-daily/game-daily.service';
 export { PushApplicationsComfyUiService } from './comfyui/comfyui.service';
 export { McServerService as PushApplicationsMcServerService } from './mcserver/mcserver.service';
+export { PushApplicationsAgentService } from './agent/agent.service';

@@ -6,3 +6,4 @@ export { McServerController as PushApplicationsMcServerController } from './appl
 export { ComfyUiController as PushApplicationsComfyUiController } from './applications/comfyui.controller';
 export { QqbotCallbackController } from './callbacks';
 export { GeneralController as PushGeneralController } from './general.controller';
+export { DshController as PushDshController } from './agent/dsh.controller';

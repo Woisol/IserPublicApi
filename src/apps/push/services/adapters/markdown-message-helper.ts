@@ -8,6 +8,7 @@ import type {
   RepoPushDetails,
   WeatherPushDetails,
   GeneralPushDetails,
+  AgentPushDetails,
 } from '@app/apps/push/types/push-message';
 import type {
   IssuesWebhookPayload,
@@ -207,6 +208,20 @@ export class MarkdownMessageHelper {
         this.field('文件名', details.filename),
         this.field('路径', details.path),
       ].join('\n'),
+    );
+  }
+
+  buildAgentMarkdown(details: AgentPushDetails): string {
+    const notification = {
+      done: { title: '✅ 任务完成', pic: 'dsh.done.png' },
+      ask: { title: '⚠️ 等待审批', pic: 'dsh.confirm.png' },
+      question: { title: '❓ 等待回答', pic: 'dsh.confirm.png' },
+      error: { title: '❌ 任务出错', pic: 'dsh.error.png' },
+    }[details.kind];
+    return this.buildMessage(
+      notification.title,
+      notification.pic,
+      details.message,
     );
   }
 
